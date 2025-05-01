@@ -1,0 +1,181 @@
+/* NooyenUSATracker Custom Styles */
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+}
+
+/* Navbar styling */
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+/* Card styling */
+.card {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: none;
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    font-weight: 600;
+}
+
+/* Button hover effects */
+.btn {
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Dashboard machine grid */
+.machine-container {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.machine-card {
+    height: 100%;
+    transition: all 0.3s ease;
+}
+
+.machine-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.machine-card .card-header {
+    font-weight: bold;
+}
+
+/* Status indicators */
+.machine-status {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+}
+
+.status-idle {
+    background-color: #0d6efd; /* Bootstrap primary blue */
+}
+
+.status-active {
+    background-color: #198754; /* Bootstrap success green */
+}
+
+.status-warning {
+    background-color: #ffc107; /* Bootstrap warning yellow */
+}
+
+.status-offline {
+    background-color: #6c757d; /* Bootstrap secondary gray */
+}
+
+/* Form styling */
+.form-control, .form-select {
+    border-radius: 0.25rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Table styling */
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    border-top: none;
+}
+
+/* Footer styling */
+.footer {
+    color: #6c757d;
+    margin-top: 3rem;
+}
+
+/* Login form styling */
+.login-container {
+    max-width: 400px;
+    margin: 0 auto;
+    padding-top: 40px;
+}
+
+/* Alert styling */
+.alert {
+    border-radius: 0.25rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Zone header styling */
+.zone-header {
+    border-left: 5px solid #0d6efd;
+    padding-left: 10px;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+    .machine-container {
+        justify-content: center;
+    }
+    
+    .dashboard-stats .card {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Animation for warning state */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+.status-warning-animated {
+    animation: pulse 1s infinite;
+}
+
+/* Dashboard stats cards */
+.dashboard-stats .card {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.dashboard-stats .card-body {
+    position: relative;
+}
+
+.dashboard-stats .icon {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 3rem;
+    opacity: 0.2;
+}
+
+/* Modal styling */
+.modal-header {
+    background-color: #f8f9fa;
+}
+
+.modal-footer {
+    background-color: #f8f9fa;
+}

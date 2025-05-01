@@ -1,0 +1,320 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+    .machine-card {
+        transition: all 0.3s ease;
+    }
+    .machine-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .machine-status {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+    .status-idle {
+        background-color: blue;
+    }
+    .status-active {
+        background-color: green;
+    }
+    .status-warning {
+        background-color: orange;
+    }
+    .status-offline {
+        background-color: gray;
+    }
+    .zone-header {
+        border-left: 5px solid #0d6efd;
+        padding-left: 10px;
+    }
+    .dashboard-stats .card {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .dashboard-stats .card-body {
+        position: relative;
+    }
+    .dashboard-stats .icon {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        font-size: 3rem;
+        opacity: 0.2;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1 class="mb-4"><i class="fas fa-tachometer-alt me-2"></i>Machine Dashboard</h1>
+        
+        <!-- Dashboard Statistics -->
+        <div class="row dashboard-stats mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card bg-primary text-white h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Active Users</h5>
+                        <h2>{{ active_users }}</h2>
+                        <i class="fas fa-user-check icon"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-success text-white h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Active Machines</h5>
+                        <h2>{{ active_count }}</h2>
+                        <i class="fas fa-industry icon"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-warning text-white h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Warnings</h5>
+                        <h2>{{ warning_count }}</h2>
+                        <i class="fas fa-exclamation-triangle icon"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-info text-white h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Today's Logins</h5>
+                        <h2>{{ today_logs }}</h2>
+                        <i class="fas fa-clipboard-list icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Machine Status Chart -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Machine Status Overview</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="machineStatusChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Machine Activity (Last 24 Hours)</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="activityChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Extended Analytics -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Weekly Machine Activity</h5>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-primary active">Week</button>
+                            <button type="button" class="btn btn-outline-primary">Month</button>
+                        </div>
+                    </div>
+                    <div class="card-body chart-container">
+                        <canvas id="machine-activity-chart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Machine Usage by Zone</h5>
+                        <div>
+                            <select class="form-select form-select-sm" id="zoneTimeFilter">
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                                <option value="year">This Year</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body chart-container">
+                        <canvas id="zone-usage-chart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Zone Display -->
+{% for zone in zones %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h2 class="zone-header mb-4">{{ zone.display_name }}</h2>
+        <div class="row machine-container">
+            {% for machine in machines_by_zone[zone.id] %}
+            <div class="col-md-3 mb-4" id="machine-{{ machine.machine_id }}">
+                <div class="card h-100 machine-card
+                    {% if machine.status == 'active' %}border-success{% 
+                    elif machine.status == 'warning' %}border-warning{% 
+                    elif machine.status == 'offline' %}border-secondary{% 
+                    else %}border-primary{% endif %}">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <span class="machine-status status-{{ machine.status }}"></span>
+                            {{ machine.name }}
+                        </h5>
+                        <span class="badge bg-secondary">#{{ machine.machine_id }}</span>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            <i class="fas fa-info-circle me-2"></i>
+                            Status: <span class="machine-status-text fw-bold">{{ machine.status|capitalize }}</span>
+                        </p>
+                        {% if machine.current_user %}
+                        <p>
+                            <i class="fas fa-user me-2"></i>
+                            User: {{ machine.current_user.name }}
+                        </p>
+                        {% if machine.last_activity %}
+                        <p>
+                            <i class="fas fa-clock me-2"></i>
+                            Last Activity: <span class="last-activity" 
+                                               data-timestamp="{{ machine.last_activity.isoformat() }}">
+                                {{ machine.last_activity.strftime('%I:%M %p') }}
+                            </span>
+                        </p>
+                        {% endif %}
+                        {% else %}
+                        <p>
+                            <i class="fas fa-user-slash me-2"></i>
+                            No active user
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Machine Legend -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Status Legend</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap">
+                    <div class="me-4 mb-2">
+                        <span class="machine-status status-idle"></span> Idle - Machine ready, no user
+                    </div>
+                    <div class="me-4 mb-2">
+                        <span class="machine-status status-active"></span> Active - Machine in use
+                    </div>
+                    <div class="me-4 mb-2">
+                        <span class="machine-status status-warning"></span> Warning - Inactivity warning
+                    </div>
+                    <div class="me-4 mb-2">
+                        <span class="machine-status status-offline"></span> Offline - Machine not connected
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+    // Initialize dashboard statistics
+    const statusData = {
+        labels: ['Idle', 'Active', 'Warning', 'Offline'],
+        datasets: [{
+            data: [{{ idle_count }}, {{ active_count }}, {{ warning_count }}, {{ offline_count }}],
+            backgroundColor: ['#0d6efd', '#198754', '#ffc107', '#6c757d'],
+            hoverOffset: 4
+        }]
+    };
+    
+    const statusChart = new Chart(
+        document.getElementById('machineStatusChart'),
+        {
+            type: 'doughnut',
+            data: statusData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        }
+    );
+    
+    // Sample activity data - this would be filled from the backend in reality
+    const activityData = {
+        labels: ['6AM', '8AM', '10AM', '12PM', '2PM', '4PM', '6PM', '8PM'],
+        datasets: [{
+            label: 'Machine Activity',
+            data: [2, 4, 6, 5, 7, 6, 3, 1],
+            fill: true,
+            backgroundColor: 'rgba(13, 110, 253, 0.2)',
+            borderColor: 'rgba(13, 110, 253, 1)',
+            tension: 0.4
+        }]
+    };
+    
+    const activityChart = new Chart(
+        document.getElementById('activityChart'),
+        {
+            type: 'line',
+            data: activityData,
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Active Machines'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        }
+                    }
+                }
+            }
+        }
+    );
+    
+    // Initialize dashboard update
+    document.addEventListener('DOMContentLoaded', function() {
+        // Update dashboard every 5 seconds
+        setInterval(updateDashboard, 5000);
+        
+        // Initial update
+        updateDashboard();
+        
+        // Format timestamps
+        formatTimestamps();
+    });
+</script>
+{% endblock %}

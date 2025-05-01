@@ -1,0 +1,869 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+    pre {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 4px;
+        padding: 15px;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+    
+    .sketch-container {
+        position: relative;
+    }
+    
+    .copy-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 10;
+    }
+    
+    .code-form {
+        margin-top: 20px;
+    }
+    
+    .node-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .node-type-card {
+        transition: transform 0.2s;
+        height: 100%;
+    }
+    
+    .node-type-card:hover {
+        transform: translateY(-5px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1><i class="fas fa-microchip me-2"></i>Node Sketches</h1>
+        <p class="lead">These firmware files can be flashed to your ESP32 devices and instructions for Raspberry Pi nodes.</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="alert alert-info">
+            <h5><i class="fas fa-info-circle me-2"></i>System Overview</h5>
+            <p>This system now exclusively uses ESP32 and Raspberry Pi nodes for all functionality. Each node can be configured for a specific role:</p>
+            <ul>
+                <li><strong>Machine Monitor Node</strong> - Controls machine access, processes RFID scans, and reports machine activity</li>
+                <li><strong>Office RFID Node</strong> - For registering new RFID cards</li>
+                <li><strong>Accessory IO Node</strong> - Provides control for auxiliary devices like fans, dust collection, lighting</li>
+                <li><strong>Raspberry Pi Node</strong> - Uses the REST API to integrate custom applications with the system</li>
+            </ul>
+            <p>All nodes communicate with the central server using standard REST APIs and mDNS for auto-discovery.</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="node-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="esp32-tab" data-bs-toggle="tab" data-bs-target="#esp32-sketch" type="button" role="tab" aria-controls="esp32-sketch" aria-selected="true">
+                            ESP32 Firmware
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="raspberry-tab" data-bs-toggle="tab" data-bs-target="#raspberry-sketch" type="button" role="tab" aria-controls="raspberry-sketch" aria-selected="false">
+                            Raspberry Pi Integration
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="config-tab" data-bs-toggle="tab" data-bs-target="#config-settings" type="button" role="tab" aria-controls="config-settings" aria-selected="false">
+                            Network Configuration
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="node-tab-content">
+                    <!-- ESP32 Firmware Tab -->
+                    <div class="tab-pane fade show active" id="esp32-sketch" role="tabpanel" aria-labelledby="esp32-tab">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4>ESP32 Node Firmware</h4>
+                            <div>
+                                <a href="/static/downloads/esp32_nooyen_node_firmware.zip" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-download me-1"></i> Download PlatformIO Project
+                                </a>
+                                <a href="#" class="btn btn-outline-primary btn-sm ms-2" onclick="downloadSketch('esp32-sketch-content', 'esp32_node_firmware.ino')">
+                                    <i class="fas fa-download me-1"></i> Download Sketch
+                                </a>
+                                <a href="#" class="btn btn-outline-primary btn-sm ms-2" onclick="downloadSketch('esp32-wiring-content', 'esp32_wiring_diagram.txt')">
+                                    <i class="fas fa-download me-1"></i> Download Wiring Guide
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-success">
+                            <h5><i class="fas fa-microchip me-2"></i>Multi-Function ESP32 Node</h5>
+                            <p>The ESP32 firmware now supports three node types in a single codebase:</p>
+                            <div class="row text-center mt-3">
+                                <div class="col-md-4 mb-3">
+                                    <div class="card node-type-card">
+                                        <div class="card-body">
+                                            <div class="node-icon text-primary">
+                                                <i class="fas fa-cogs"></i>
+                                            </div>
+                                            <h5>Machine Monitor</h5>
+                                            <p class="mb-0">Controls up to 4 machines with RFID access and activity monitoring</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="card node-type-card">
+                                        <div class="card-body">
+                                            <div class="node-icon text-success">
+                                                <i class="fas fa-id-card"></i>
+                                            </div>
+                                            <h5>Office RFID</h5>
+                                            <p class="mb-0">Dedicated node for registering new RFID cards with visual feedback</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="card node-type-card">
+                                        <div class="card-body">
+                                            <div class="node-icon text-danger">
+                                                <i class="fas fa-plug"></i>
+                                            </div>
+                                            <h5>Accessory IO</h5>
+                                            <p class="mb-0">Controls external devices with programmable timers and manual override</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <ul class="nav nav-tabs mb-3" id="esp32-detail-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="esp32-sketch-tab" data-bs-toggle="tab" data-bs-target="#esp32-sketch-content-tab" type="button" role="tab">
+                                    Sketch Code
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="esp32-wiring-tab" data-bs-toggle="tab" data-bs-target="#esp32-wiring-content-tab" type="button" role="tab">
+                                    Wiring Diagram
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="esp32-visual-tab" data-bs-toggle="tab" data-bs-target="#esp32-visual-diagram-tab" type="button" role="tab">
+                                    Visual Diagram
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content" id="esp32-detail-content">
+                            <!-- ESP32 Sketch Code -->
+                            <div class="tab-pane fade show active" id="esp32-sketch-content-tab" role="tabpanel">
+                                <div class="sketch-container">
+                                    <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="copyToClipboard('esp32-sketch-content')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                    <pre id="esp32-sketch-content" class="language-cpp">{{ esp32_sketch|replace('$SERVER_IP$', server_ip)|replace('$SERVER_PORT$', server_port) }}</pre>
+                                </div>
+                            </div>
+                            
+                            <!-- ESP32 Wiring Text -->
+                            <div class="tab-pane fade" id="esp32-wiring-content-tab" role="tabpanel">
+                                <div class="sketch-container">
+                                    <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="copyToClipboard('esp32-wiring-content')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                    <pre id="esp32-wiring-content">{{ esp32_wiring }}</pre>
+                                </div>
+                            </div>
+                            
+                            <!-- ESP32 Visual Diagram -->
+                            <div class="tab-pane fade" id="esp32-visual-diagram-tab" role="tabpanel">
+                                <div class="text-center">
+                                    <img src="{{ url_for('static', filename='img/esp32_wiring_diagram.svg') }}" alt="ESP32 Wiring Diagram" class="img-fluid" style="max-width: 100%; height: auto;">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <div class="alert alert-primary" role="alert">
+                                <h5><i class="fas fa-info-circle me-2"></i>New PlatformIO Project Available!</h5>
+                                <p>We've upgraded the ESP32 firmware to a complete PlatformIO project for easier development, debugging, and OTA updates. The new modular architecture supports all three node types in a single codebase with these features:</p>
+                                <ul>
+                                    <li>Component-based architecture for easier maintenance</li>
+                                    <li>Web-based configuration with embedded HTML dashboard</li>
+                                    <li>WiFi management with network scanning capability</li>
+                                    <li>Automatic fallback to AP mode for initial setup</li>
+                                    <li>Support for all three node types in a single firmware</li>
+                                </ul>
+                                <p class="mb-0">Click the "Download PlatformIO Project" button above to get the complete package!</p>
+                            </div>
+                            
+                            <h5>Required Libraries</h5>
+                            <p>These libraries are automatically managed when using the PlatformIO project, but if you're using the Arduino sketch, install them via the Arduino Library Manager:</p>
+                            <ul>
+                                <li>WiFi (built-in with ESP32)</li>
+                                <li>ESPmDNS</li>
+                                <li>AsyncTCP</li>
+                                <li>ESPAsyncWebServer</li>
+                                <li>SPI</li>
+                                <li>MFRC522 (for RFID readers)</li>
+                                <li>FastLED</li>
+                                <li>Preferences</li>
+                                <li>EEPROM</li>
+                                <li>HTTPClient</li>
+                                <li>ArduinoJson</li>
+                                <li>Update (for OTA)</li>
+                                <li>NTPClient</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Raspberry Pi Integration Tab -->
+                    <div class="tab-pane fade" id="raspberry-sketch" role="tabpanel" aria-labelledby="raspberry-tab">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4>Raspberry Pi Integration</h4>
+                            <div>
+                                <a href="#" class="btn btn-outline-primary btn-sm" onclick="downloadSketch('raspberry-api-content', 'raspberry_api_example.py')">
+                                    <i class="fas fa-download me-1"></i> Download Python Example
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h5><i class="fas fa-raspberry-pi me-2"></i>Raspberry Pi as a Node</h5>
+                            <p>You can integrate Raspberry Pi devices with this system to create custom nodes that function alongside ESP32 devices. The Raspberry Pi can implement the same API endpoints and mDNS discovery to appear as a standard node in the system.</p>
+                        </div>
+                        
+                        <ul class="nav nav-tabs mb-3" id="raspberry-detail-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="raspberry-api-tab" data-bs-toggle="tab" data-bs-target="#raspberry-api-content-tab" type="button" role="tab">
+                                    API Reference
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="raspberry-example-tab" data-bs-toggle="tab" data-bs-target="#raspberry-example-content-tab" type="button" role="tab">
+                                    Python Example
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="raspberry-mdns-tab" data-bs-toggle="tab" data-bs-target="#raspberry-mdns-content-tab" type="button" role="tab">
+                                    mDNS Setup
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content" id="raspberry-detail-content">
+                            <!-- API Reference -->
+                            <div class="tab-pane fade show active" id="raspberry-api-content-tab" role="tabpanel">
+                                <h5>API Endpoints Required for Node Integration</h5>
+                                <p>To function as a system node, a Raspberry Pi device must implement these API endpoints:</p>
+                                
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">GET /api/status</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Returns the current status and configuration of the node.</p>
+                                        <p><strong>Required response format:</strong></p>
+                                        <pre>{
+  "node_id": "rpi-machine-1",
+  "node_type": "machine_monitor", // One of: machine_monitor, office_reader, accessory_io, custom
+  "name": "Raspberry Pi Machine Monitor",
+  "ip_address": "192.168.1.100",
+  "status": "online",
+  "machines": [
+    {
+      "zone": 0,
+      "machine_id": "01",
+      "status": "idle", // or "active"
+      "rfid": "", // Current active RFID tag if any
+      "activity_count": 0
+    }
+  ]
+}</pre>
+                                    </div>
+                                </div>
+                                
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">GET /api/config</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Returns the configuration of the node.</p>
+                                        <p><strong>Required response format:</strong></p>
+                                        <pre>{
+  "node_id": "rpi-machine-1",
+  "node_type": "machine_monitor",
+  "name": "Raspberry Pi Machine Monitor",
+  "server_url": "http://{{ server_ip }}:{{ server_port }}",
+  "machines": [
+    {
+      "machine_id": "01",
+      "zone": 0,
+      "name": "Table Saw"
+    }
+  ]
+}</pre>
+                                    </div>
+                                </div>
+                                
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">POST /api/config</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Updates the node configuration.</p>
+                                        <p><strong>Request format:</strong> Same as the response from GET /api/config</p>
+                                        <p><strong>Response format:</strong></p>
+                                        <pre>{
+  "success": true,
+  "message": "Configuration updated"
+}</pre>
+                                    </div>
+                                </div>
+                                
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">POST /api/update</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Triggers a software update on the node.</p>
+                                        <p><strong>Response format:</strong></p>
+                                        <pre>{
+  "success": true,
+  "message": "Update initiated"
+}</pre>
+                                    </div>
+                                </div>
+                                
+                                <h5 class="mt-4">Optional Endpoints for Specific Node Types</h5>
+                                
+                                <div class="accordion" id="optionalEndpointsAccordion">
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header" id="headingMachineMonitor">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMachineMonitor" aria-expanded="false" aria-controls="collapseMachineMonitor">
+                                                Machine Monitor Node Endpoints
+                                            </button>
+                                        </h2>
+                                        <div id="collapseMachineMonitor" class="accordion-collapse collapse" aria-labelledby="headingMachineMonitor" data-bs-parent="#optionalEndpointsAccordion">
+                                            <div class="accordion-body">
+                                                <ul>
+                                                    <li><code>POST /api/auth</code> - Process RFID authentication</li>
+                                                    <li><code>POST /api/logout</code> - Log out a user</li>
+                                                    <li><code>POST /api/activity</code> - Update machine activity</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header" id="headingOfficeReader">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOfficeReader" aria-expanded="false" aria-controls="collapseOfficeReader">
+                                                Office RFID Reader Node Endpoints
+                                            </button>
+                                        </h2>
+                                        <div id="collapseOfficeReader" class="accordion-collapse collapse" aria-labelledby="headingOfficeReader" data-bs-parent="#optionalEndpointsAccordion">
+                                            <div class="accordion-body">
+                                                <ul>
+                                                    <li><code>GET /api/last_scan</code> - Get the last scanned RFID tag</li>
+                                                    <li><code>POST /api/register</code> - Register a new RFID tag</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header" id="headingAccessoryIO">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAccessoryIO" aria-expanded="false" aria-controls="collapseAccessoryIO">
+                                                Accessory IO Node Endpoints
+                                            </button>
+                                        </h2>
+                                        <div id="collapseAccessoryIO" class="accordion-collapse collapse" aria-labelledby="headingAccessoryIO" data-bs-parent="#optionalEndpointsAccordion">
+                                            <div class="accordion-body">
+                                                <ul>
+                                                    <li><code>GET /api/io_status</code> - Get status of all IO pins</li>
+                                                    <li><code>POST /api/control_io</code> - Control an IO pin</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Python Example Code -->
+                            <div class="tab-pane fade" id="raspberry-example-content-tab" role="tabpanel">
+                                <div class="sketch-container">
+                                    <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="copyToClipboard('raspberry-example-content')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                    <pre id="raspberry-example-content" class="language-python">"""
+Raspberry Pi Node Example for NooyenUSA RFID Machine Monitor
+
+This example implements a simple machine monitor node that can be
+integrated with the NooyenUSA RFID Machine Monitor system.
+
+Requirements:
+- Flask
+- zeroconf
+- requests
+- RPi.GPIO (for Raspberry Pi GPIO access)
+"""
+
+import json
+import os
+import socket
+import threading
+import time
+from datetime import datetime
+
+import requests
+from flask import Flask, jsonify, request
+from zeroconf import ServiceInfo, Zeroconf
+
+# Configuration
+NODE_ID = "rpi-machine-1"
+NODE_TYPE = "machine_monitor"
+NODE_NAME = "Raspberry Pi Machine Monitor"
+SERVER_URL = "http://{{ server_ip }}:{{ server_port }}"
+LISTEN_PORT = 5050
+
+# Node state
+node_config = {
+    "node_id": NODE_ID,
+    "node_type": NODE_TYPE,
+    "name": NODE_NAME,
+    "server_url": SERVER_URL,
+    "machines": [
+        {
+            "machine_id": "01",
+            "zone": 0,
+            "name": "Table Saw"
+        }
+    ]
+}
+
+node_status = {
+    "node_id": NODE_ID,
+    "node_type": NODE_TYPE,
+    "name": NODE_NAME,
+    "ip_address": "0.0.0.0",  # Will be updated on startup
+    "status": "online",
+    "machines": [
+        {
+            "zone": 0,
+            "machine_id": "01",
+            "status": "idle",
+            "rfid": "",
+            "activity_count": 0
+        }
+    ]
+}
+
+# Flask application
+app = Flask(__name__)
+
+# --------------------------------------------------
+# API Endpoints
+# --------------------------------------------------
+
+@app.route('/api/status', methods=['GET'])
+def get_status():
+    """Return the current status of the node"""
+    return jsonify(node_status)
+
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    """Return the current configuration of the node"""
+    return jsonify(node_config)
+
+@app.route('/api/config', methods=['POST'])
+def update_config():
+    """Update the node configuration"""
+    global node_config
+    
+    try:
+        new_config = request.json
+        # Validate the config (basic validation here, can be more comprehensive)
+        if 'node_id' not in new_config or 'node_type' not in new_config:
+            return jsonify({
+                "success": False,
+                "message": "Missing required configuration fields"
+            }), 400
+            
+        # Update the configuration
+        node_config = new_config
+        
+        # Save to file for persistence
+        with open('node_config.json', 'w') as f:
+            json.dump(node_config, f)
+            
+        return jsonify({
+            "success": True,
+            "message": "Configuration updated"
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": f"Error updating configuration: {str(e)}"
+        }), 500
+
+@app.route('/api/update', methods=['POST'])
+def software_update():
+    """Trigger a software update"""
+    # This would typically pull the latest code from a git repository
+    # and restart the application
+    
+    # For this example, we'll just simulate a successful update
+    return jsonify({
+        "success": True,
+        "message": "Update initiated. Node will restart shortly."
+    })
+
+# Add additional endpoints based on node type (machine monitor, office reader, etc.)
+# These are examples for a machine monitor node
+
+@app.route('/api/auth', methods=['POST'])
+def authenticate_rfid():
+    """Process RFID authentication"""
+    data = request.json
+    rfid = data.get('rfid')
+    zone = data.get('zone', 0)
+    machine_id = data.get('machine_id', '01')
+    
+    # In a real implementation, you would check with the server
+    # or handle local authentication logic
+    
+    # For this example, we'll simulate successful authentication
+    node_status['machines'][zone]['status'] = 'active'
+    node_status['machines'][zone]['rfid'] = rfid
+    
+    return jsonify({
+        "success": True,
+        "message": "Authentication successful",
+        "authorized": True
+    })
+
+@app.route('/api/logout', methods=['POST'])
+def logout_user():
+    """Log out a user"""
+    data = request.json
+    zone = data.get('zone', 0)
+    
+    # Update status
+    node_status['machines'][zone]['status'] = 'idle'
+    node_status['machines'][zone]['rfid'] = ''
+    
+    return jsonify({
+        "success": True,
+        "message": "User logged out"
+    })
+
+@app.route('/api/activity', methods=['POST'])
+def update_activity():
+    """Update machine activity"""
+    data = request.json
+    zone = data.get('zone', 0)
+    count = data.get('count', 1)
+    
+    # Update activity count
+    node_status['machines'][zone]['activity_count'] += count
+    
+    return jsonify({
+        "success": True,
+        "message": "Activity updated"
+    })
+
+# --------------------------------------------------
+# mDNS Service Registration
+# --------------------------------------------------
+
+def register_mdns_service():
+    """Register this node with mDNS for discovery"""
+    ip_address = socket.gethostbyname(socket.gethostname())
+    node_status['ip_address'] = ip_address
+    
+    info = ServiceInfo(
+        "_rfid-monitor._tcp.local.",
+        f"{NODE_ID}._rfid-monitor._tcp.local.",
+        addresses=[socket.inet_aton(ip_address)],
+        port=LISTEN_PORT,
+        properties={
+            'node_id': NODE_ID.encode('utf-8'),
+            'node_type': NODE_TYPE.encode('utf-8'),
+            'name': NODE_NAME.encode('utf-8')
+        }
+    )
+    
+    zeroconf = Zeroconf()
+    zeroconf.register_service(info)
+    print(f"Registered mDNS service: {NODE_ID}")
+    
+    return zeroconf, info
+
+# --------------------------------------------------
+# Startup and Background Tasks
+# --------------------------------------------------
+
+def background_tasks():
+    """Background tasks to run periodically"""
+    while True:
+        try:
+            # Heartbeat to server
+            requests.post(f"{SERVER_URL}/api/node_heartbeat", json={
+                "node_id": NODE_ID,
+                "status": "online",
+                "timestamp": datetime.now().isoformat()
+            })
+        except Exception as e:
+            print(f"Error in background task: {str(e)}")
+            
+        time.sleep(60)  # Run every minute
+
+def load_config():
+    """Load configuration from file if available"""
+    global node_config
+    
+    try:
+        if os.path.exists('node_config.json'):
+            with open('node_config.json', 'r') as f:
+                node_config = json.load(f)
+                print("Loaded configuration from file")
+    except Exception as e:
+        print(f"Error loading configuration: {str(e)}")
+
+if __name__ == '__main__':
+    # Load configuration
+    load_config()
+    
+    # Register mDNS service
+    zeroconf, info = register_mdns_service()
+    
+    # Start background tasks
+    bg_thread = threading.Thread(target=background_tasks)
+    bg_thread.daemon = True
+    bg_thread.start()
+    
+    try:
+        # Start the Flask application
+        app.run(host='0.0.0.0', port=LISTEN_PORT)
+    finally:
+        # Clean up mDNS on exit
+        zeroconf.unregister_service(info)
+        zeroconf.close()
+</pre>
+                                </div>
+                            </div>
+                            
+                            <!-- mDNS Setup -->
+                            <div class="tab-pane fade" id="raspberry-mdns-content-tab" role="tabpanel">
+                                <h5>Setting Up mDNS Discovery on Raspberry Pi</h5>
+                                
+                                <p>For your Raspberry Pi node to be automatically discovered by the system, you need to implement mDNS (Multicast DNS) service advertising. The example code includes this functionality, but here's a breakdown of how it works:</p>
+                                
+                                <ol>
+                                    <li>
+                                        <h6>Install required packages:</h6>
+                                        <pre>pip install zeroconf</pre>
+                                    </li>
+                                    <li>
+                                        <h6>Register your service with the correct service type:</h6>
+                                        <pre>ServiceInfo(
+    "_rfid-monitor._tcp.local.",  # Service type
+    f"{NODE_ID}._rfid-monitor._tcp.local.",  # Service name
+    addresses=[socket.inet_aton(ip_address)],
+    port=LISTEN_PORT,
+    properties={  # Service properties
+        'node_id': NODE_ID.encode('utf-8'),
+        'node_type': NODE_TYPE.encode('utf-8'),
+        'name': NODE_NAME.encode('utf-8')
+    }
+)</pre>
+                                    </li>
+                                    <li>
+                                        <h6>Service Type and Properties:</h6>
+                                        <p>The system looks for nodes with the service type <code>_rfid-monitor._tcp.local.</code> and requires the following properties:</p>
+                                        <ul>
+                                            <li><code>node_id</code>: A unique identifier for your node</li>
+                                            <li><code>node_type</code>: One of: <code>machine_monitor</code>, <code>office_reader</code>, <code>accessory_io</code>, or <code>custom</code></li>
+                                            <li><code>name</code>: A human-readable name for the node</li>
+                                        </ul>
+                                    </li>
+                                    <li>
+                                        <h6>Running as a Service:</h6>
+                                        <p>To ensure your node runs on startup, create a systemd service:</p>
+                                        <pre># /etc/systemd/system/rfid-node.service
+[Unit]
+Description=RFID Machine Monitor Node
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/rfid-node
+ExecStart=/usr/bin/python3 /home/pi/rfid-node/app.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target</pre>
+                                        <p>Enable and start the service:</p>
+                                        <pre>sudo systemctl enable rfid-node
+sudo systemctl start rfid-node</pre>
+                                    </li>
+                                </ol>
+                                
+                                <div class="alert alert-warning">
+                                    <h6><i class="fas fa-exclamation-triangle me-2"></i>Important Notes</h6>
+                                    <ul>
+                                        <li>Ensure your Raspberry Pi has a static IP address or uses DHCP reservation</li>
+                                        <li>Allow the necessary ports through your firewall (default: 5050)</li>
+                                        <li>For reliable mDNS discovery, both the server and client must be on the same subnet</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Configuration Settings Tab -->
+                    <div class="tab-pane fade" id="config-settings" role="tabpanel" aria-labelledby="config-tab">
+                        <div class="mb-4">
+                            <h4>Network Configuration</h4>
+                            <p>Customize these settings to match your network environment. The changes will be applied to the code when you view or download the sketches.</p>
+                            
+                            <form action="{{ url_for('node_sketches') }}" method="post" class="code-form">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="server-ip" class="form-label">Server IP Address</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="server-ip" name="server_ip" value="{{ server_ip }}" 
+                                                   pattern="^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                                                   required>
+                                            <button class="btn btn-outline-secondary" type="button" onclick="detectServerIp()">Detect</button>
+                                        </div>
+                                        <div class="form-text">The IP address of this server on your local network</div>
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <label for="server-port" class="form-label">Server Port</label>
+                                        <input type="number" class="form-control" id="server-port" name="server_port" 
+                                               value="{{ server_port }}" min="1" max="65535" required>
+                                        <div class="form-text">The port this server is running on (usually 5000)</div>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i> Save Configuration
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h4>Network Architecture</h4>
+                            <div class="alert alert-info">
+                                <h5><i class="fas fa-network-wired me-2"></i>System Network Overview</h5>
+                                <p>The system uses a distributed network architecture with the following components:</p>
+                                <ul>
+                                    <li><strong>Central Server</strong> - This web application, handling authentication, authorization, and data storage</li>
+                                    <li><strong>ESP32 Nodes</strong> - WiFi-connected devices performing various roles in the system</li>
+                                    <li><strong>Raspberry Pi Nodes</strong> - More powerful nodes that can implement custom functionality</li>
+                                    <li><strong>mDNS Discovery</strong> - Automatic detection and registration of new nodes on the network</li>
+                                </ul>
+                                <p>All communication happens over standard HTTP APIs, making the system easy to extend and customize.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Function to copy text to clipboard
+    window.copyToClipboard = function(elementId) {
+        const element = document.getElementById(elementId);
+        const text = element.textContent;
+        
+        navigator.clipboard.writeText(text).then(function() {
+            // Create a toast notification
+            const toast = document.createElement('div');
+            toast.className = 'toast align-items-center text-white bg-success';
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-check-circle me-2"></i> Copied to clipboard!
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+            
+            // Append to body and show
+            const container = document.createElement('div');
+            container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            container.appendChild(toast);
+            document.body.appendChild(container);
+            
+            const bsToast = new bootstrap.Toast(toast, { delay: 2000 });
+            bsToast.show();
+            
+            // Remove after hiding
+            toast.addEventListener('hidden.bs.toast', function () {
+                document.body.removeChild(container);
+            });
+        }).catch(function(err) {
+            console.error('Failed to copy text: ', err);
+        });
+    };
+    
+    // Function to download a sketch
+    window.downloadSketch = function(elementId, filename) {
+        const element = document.getElementById(elementId);
+        const text = element.textContent;
+        
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        
+        // Cleanup
+        setTimeout(function() {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 0);
+    };
+    
+    // Function to detect server IP
+    window.detectServerIp = function() {
+        fetch('/api/server_ip')
+            .then(response => response.json())
+            .then(data => {
+                if (data.ip) {
+                    document.getElementById('server-ip').value = data.ip;
+                }
+            })
+            .catch(error => {
+                console.error('Error detecting server IP:', error);
+            });
+    };
+});
+</script>
+{% endblock %}

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+  <!-- RFID Icon -->
+  <rect x="10" y="10" width="40" height="40" rx="5" fill="#2c3e50" />
+  <rect x="15" y="15" width="30" height="30" rx="2" fill="none" stroke="#3498db" stroke-width="2" />
+  <circle cx="30" cy="30" r="10" fill="none" stroke="#3498db" stroke-width="2" />
+  <circle cx="30" cy="30" r="3" fill="#3498db" />
+  
+  <!-- Signal Waves -->
+  <path d="M 50,30 C 55,30 55,20 60,20 S 65,40 70,40 S 75,10 80,10" stroke="#3498db" stroke-width="2" fill="none" />
+  <path d="M 50,35 C 57,35 57,25 64,25 S 71,45 78,45" stroke="#3498db" stroke-width="1.5" fill="none" />
+  
+  <!-- Text -->
+  <text x="90" y="30" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#2c3e50">NooyenUSA</text>
+  <text x="90" y="45" font-family="Arial, sans-serif" font-size="14" fill="#3498db">Machine Monitor</text>
+</svg>

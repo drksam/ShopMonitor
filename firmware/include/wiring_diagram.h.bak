@@ -1,0 +1,756 @@
+#ifndef WIRING_DIAGRAM_H
+#define WIRING_DIAGRAM_H
+
+extern const char* WIRING_DIAGRAM_HTML;
+
+#define WIRING_DIAGRAM_HTML_CONTENT R"rawliteral(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 RFID Node Wiring Diagram</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1, h2 {
+            color: #0066cc;
+        }
+        .diagram-container {
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .legend {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .color-box {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border: 1px solid #999;
+        }
+        .notes {
+            margin-top: 20px;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .tab {
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+            border-radius: 4px 4px 0 0;
+        }
+        .tab button {
+            background-color: inherit;
+            float: left;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 10px 16px;
+            transition: 0.3s;
+            font-size: 14px;
+            color: #333;
+        }
+        .tab button:hover {
+            background-color: #ddd;
+        }
+        .tab button.active {
+            background-color: #ccc;
+        }
+        .tabcontent {
+            display: none;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-link">← Back to Dashboard</a>
+    <h1>ESP32 RFID Node Wiring Diagram</h1>
+    
+    <div class="tab">
+        <button class="tablinks active" onclick="openTab(event, 'machine-monitor')">Machine Monitor</button>
+        <button class="tablinks" onclick="openTab(event, 'office-reader')">Office RFID Reader</button>
+        <button class="tablinks" onclick="openTab(event, 'accessory-io')">Accessory I/O Controller</button>
+    </div>
+    
+    <div id="machine-monitor" class="tabcontent" style="display: block;">
+        <h2>Machine Monitor Node Wiring</h2>
+        
+        <div class="diagram-container">
+            <svg width="1000" height="600" viewBox="0 0 1000 600" xmlns="http://www.w3.org/2000/svg">
+                <!-- ESP32 DevKit V1 -->
+                <rect x="400" y="150" width="200" height="300" rx="10" fill="#d1d1d1" stroke="#000" stroke-width="2"/>
+                <text x="500" y="180" text-anchor="middle" font-weight="bold">ESP32 DevKit V1</text>
+                
+                <!-- ESP32 Pin Labels -->
+                <!-- Left side pins -->
+                <text x="390" y="210" text-anchor="end">3V3</text>
+                <text x="390" y="230" text-anchor="end">GND</text>
+                <text x="390" y="250" text-anchor="end">D15 (SS4)</text>
+                <text x="390" y="270" text-anchor="end">D2 (SS3)</text>
+                <text x="390" y="290" text-anchor="end">D4 (SS2)</text>
+                <text x="390" y="310" text-anchor="end">D5 (SS1)</text>
+                <text x="390" y="330" text-anchor="end">D18 (SCK)</text>
+                <text x="390" y="350" text-anchor="end">D19 (RST4)</text>
+                <text x="390" y="370" text-anchor="end">D21 (RST3)</text>
+                <text x="390" y="390" text-anchor="end">D22 (RST1)</text>
+                <text x="390" y="410" text-anchor="end">D23 (RST2)</text>
+                
+                <!-- Right side pins -->
+                <text x="610" y="210" text-anchor="start">D13 (LED)</text>
+                <text x="610" y="230" text-anchor="start">D12 (RGB)</text>
+                <text x="610" y="250" text-anchor="start">D14 (Relay4)</text>
+                <text x="610" y="270" text-anchor="start">D27 (Relay3)</text>
+                <text x="610" y="290" text-anchor="start">D26 (MISO)</text>
+                <text x="610" y="310" text-anchor="start">D25 (MOSI)</text>
+                <text x="610" y="330" text-anchor="start">D33 (Relay2)</text>
+                <text x="610" y="350" text-anchor="start">D32 (Relay1)</text>
+                <text x="610" y="370" text-anchor="start">D35 (Activity1)</text>
+                <text x="610" y="390" text-anchor="start">D34 (Activity2)</text>
+                <text x="610" y="410" text-anchor="start">D16 (Buzzer)</text>
+                <text x="610" y="430" text-anchor="start">D17 (Reset Button)</text>
+                
+                <!-- RFID Readers -->
+                <!-- RFID Reader 1 -->
+                <rect x="100" y="100" width="120" height="80" rx="5" fill="#b3d9ff" stroke="#000" stroke-width="2"/>
+                <text x="160" y="130" text-anchor="middle" font-weight="bold">RFID Reader 1</text>
+                <text x="160" y="150" text-anchor="middle" font-size="12">Location 1</text>
+                
+                <!-- RFID Reader 2 -->
+                <rect x="100" y="220" width="120" height="80" rx="5" fill="#b3d9ff" stroke="#000" stroke-width="2"/>
+                <text x="160" y="250" text-anchor="middle" font-weight="bold">RFID Reader 2</text>
+                <text x="160" y="270" text-anchor="middle" font-size="12">Location 2</text>
+                
+                <!-- RFID Reader 3 -->
+                <rect x="100" y="340" width="120" height="80" rx="5" fill="#b3d9ff" stroke="#000" stroke-width="2"/>
+                <text x="160" y="370" text-anchor="middle" font-weight="bold">RFID Reader 3</text>
+                <text x="160" y="390" text-anchor="middle" font-size="12">Location 3</text>
+                
+                <!-- RFID Reader 4 -->
+                <rect x="100" y="460" width="120" height="80" rx="5" fill="#b3d9ff" stroke="#000" stroke-width="2"/>
+                <text x="160" y="490" text-anchor="middle" font-weight="bold">RFID Reader 4</text>
+                <text x="160" y="510" text-anchor="middle" font-size="12">Location 4</text>
+                
+                <!-- Relay Module -->
+                <rect x="750" y="100" width="140" height="180" rx="5" fill="#ffe6cc" stroke="#000" stroke-width="2"/>
+                <text x="820" y="130" text-anchor="middle" font-weight="bold">Relay Module</text>
+                <text x="820" y="150" text-anchor="middle" font-size="12">4-Channel</text>
+                <text x="800" y="180" text-anchor="middle" font-size="12">IN1</text>
+                <text x="800" y="200" text-anchor="middle" font-size="12">IN2</text>
+                <text x="800" y="220" text-anchor="middle" font-size="12">IN3</text>
+                <text x="800" y="240" text-anchor="middle" font-size="12">IN4</text>
+                <text x="800" y="260" text-anchor="middle" font-size="12">GND</text>
+                <text x="800" y="280" text-anchor="middle" font-size="12">VCC</text>
+                
+                <!-- Activity Sensors -->
+                <rect x="750" y="320" width="140" height="180" rx="5" fill="#d9f2d9" stroke="#000" stroke-width="2"/>
+                <text x="820" y="350" text-anchor="middle" font-weight="bold">Activity Sensors</text>
+                <text x="820" y="370" text-anchor="middle" font-size="12">Input Signals</text>
+                <text x="800" y="400" text-anchor="middle" font-size="12">Activity 1</text>
+                <text x="800" y="420" text-anchor="middle" font-size="12">Activity 2</text>
+                <text x="800" y="440" text-anchor="middle" font-size="12">Activity 3</text>
+                <text x="800" y="460" text-anchor="middle" font-size="12">Activity 4</text>
+                <text x="800" y="480" text-anchor="middle" font-size="12">GND</text>
+                
+                <!-- Connection Lines -->
+                <!-- RFID Reader 1 Connections -->
+                <line x1="220" y1="120" x2="400" y2="210" stroke="#ff0000" stroke-width="2"/>
+                <text x="300" y="160" text-anchor="middle" fill="#ff0000" font-size="12">3.3V</text>
+                
+                <line x1="220" y1="140" x2="400" y2="230" stroke="#000000" stroke-width="2"/>
+                <text x="300" y="180" text-anchor="middle" fill="#000000" font-size="12">GND</text>
+                
+                <line x1="220" y1="130" x2="400" y2="310" stroke="#0066cc" stroke-width="2"/>
+                <text x="300" y="210" text-anchor="middle" fill="#0066cc" font-size="12">SS (D5)</text>
+                
+                <line x1="220" y1="150" x2="400" y2="330" stroke="#00cc00" stroke-width="2"/>
+                <text x="300" y="240" text-anchor="middle" fill="#00cc00" font-size="12">SCK (D18)</text>
+                
+                <line x1="220" y1="160" x2="600" y2="290" stroke="#cc00cc" stroke-width="2"/>
+                <text x="300" y="270" text-anchor="middle" fill="#cc00cc" font-size="12">MISO (D26)</text>
+                
+                <line x1="220" y1="170" x2="600" y2="310" stroke="#ffcc00" stroke-width="2"/>
+                <text x="300" y="300" text-anchor="middle" fill="#ffcc00" font-size="12">MOSI (D25)</text>
+                
+                <line x1="220" y1="180" x2="400" y2="390" stroke="#ff6600" stroke-width="2"/>
+                <text x="300" y="330" text-anchor="middle" fill="#ff6600" font-size="12">RST (D22)</text>
+                
+                <!-- Relay Connections -->
+                <line x1="750" y1="180" x2="600" y2="350" stroke="#ff9900" stroke-width="2"/>
+                <text x="680" y="260" text-anchor="middle" fill="#ff9900" font-size="12">Relay1 (D32)</text>
+                
+                <line x1="750" y1="200" x2="600" y2="330" stroke="#9900cc" stroke-width="2"/>
+                <text x="680" y="240" text-anchor="middle" fill="#9900cc" font-size="12">Relay2 (D33)</text>
+                
+                <line x1="750" y1="220" x2="600" y2="270" stroke="#009999" stroke-width="2"/>
+                <text x="680" y="220" text-anchor="middle" fill="#009999" font-size="12">Relay3 (D27)</text>
+                
+                <line x1="750" y1="240" x2="600" y2="250" stroke="#666600" stroke-width="2"/>
+                <text x="680" y="200" text-anchor="middle" fill="#666600" font-size="12">Relay4 (D14)</text>
+                
+                <line x1="750" y1="260" x2="400" y2="230" stroke="#000000" stroke-width="2"/>
+                <text x="680" y="180" text-anchor="middle" fill="#000000" font-size="12">GND</text>
+                
+                <line x1="750" y1="280" x2="400" y2="210" stroke="#ff0000" stroke-width="2"/>
+                <text x="680" y="160" text-anchor="middle" fill="#ff0000" font-size="12">3.3V</text>
+                
+                <!-- Activity Sensor Connections -->
+                <line x1="750" y1="400" x2="600" y2="370" stroke="#006600" stroke-width="2"/>
+                <text x="680" y="380" text-anchor="middle" fill="#006600" font-size="12">Activity1 (D35)</text>
+                
+                <line x1="750" y1="420" x2="600" y2="390" stroke="#660066" stroke-width="2"/>
+                <text x="680" y="400" text-anchor="middle" fill="#660066" font-size="12">Activity2 (D34)</text>
+                
+                <line x1="750" y1="480" x2="400" y2="230" stroke="#000000" stroke-width="2"/>
+                <text x="680" y="450" text-anchor="middle" fill="#000000" font-size="12">GND</text>
+            </svg>
+        </div>
+        
+        <div class="legend">
+            <h3>Connection Legend</h3>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #ff0000;"></div>
+                <span>Power (3.3V)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #000000;"></div>
+                <span>Ground (GND)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #0066cc;"></div>
+                <span>Slave Select (SS) Lines</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #00cc00;"></div>
+                <span>SPI Clock (SCK)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #cc00cc;"></div>
+                <span>MISO (Master In Slave Out)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #ffcc00;"></div>
+                <span>MOSI (Master Out Slave In)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #ff6600;"></div>
+                <span>Reset (RST) Lines</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #ff9900;"></div>
+                <span>Relay Control Lines</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #006600;"></div>
+                <span>Activity Input Lines</span>
+            </div>
+        </div>
+        
+        <div class="notes">
+            <h3>Wiring Notes</h3>
+            <ul>
+                <li>Each RFID reader requires 7 connections: VCC, GND, MOSI, MISO, SCK, SS, and RST.</li>
+                <li>All RFID readers share the same MOSI, MISO, and SCK lines.</li>
+                <li>Each RFID reader needs its own SS (Slave Select) and RST (Reset) line.</li>
+                <li>The relay module requires a connection for each relay channel plus power and ground.</li>
+                <li>Activity sensors are connected to analog input pins (34, 35, 36, 39).</li>
+                <li>Status LED is connected to pin D13.</li>
+                <li>RGB LED (optional) is connected to pin D12.</li>
+                <li>Buzzer is connected to pin D16.</li>
+                <li>Manual reset button is connected to pin D17.</li>
+                <li>Power the ESP32 through the USB port or an external 5V supply.</li>
+            </ul>
+        </div>
+        
+        <h3>Pin Assignment Table</h3>
+        <table>
+            <tr>
+                <th>Component</th>
+                <th>ESP32 Pin</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>RFID Reader 1</td>
+                <td>SS: D5, RST: D22</td>
+                <td>Controls machine access for Location 1</td>
+            </tr>
+            <tr>
+                <td>RFID Reader 2</td>
+                <td>SS: D4, RST: D23</td>
+                <td>Controls machine access for Location 2</td>
+            </tr>
+            <tr>
+                <td>RFID Reader 3</td>
+                <td>SS: D2, RST: D21</td>
+                <td>Controls machine access for Location 3</td>
+            </tr>
+            <tr>
+                <td>RFID Reader 4</td>
+                <td>SS: D15, RST: D19</td>
+                <td>Controls machine access for Location 4</td>
+            </tr>
+            <tr>
+                <td>SPI Bus (shared)</td>
+                <td>MOSI: D25, MISO: D26, SCK: D18</td>
+                <td>Common data bus for all RFID readers</td>
+            </tr>
+            <tr>
+                <td>Relay 1</td>
+                <td>D32</td>
+                <td>Machine 1 power control</td>
+            </tr>
+            <tr>
+                <td>Relay 2</td>
+                <td>D33</td>
+                <td>Machine 2 power control</td>
+            </tr>
+            <tr>
+                <td>Relay 3</td>
+                <td>D27</td>
+                <td>Machine 3 power control</td>
+            </tr>
+            <tr>
+                <td>Relay 4</td>
+                <td>D14</td>
+                <td>Machine 4 power control</td>
+            </tr>
+            <tr>
+                <td>Activity Sensor 1</td>
+                <td>D35</td>
+                <td>Activity monitoring for Machine 1</td>
+            </tr>
+            <tr>
+                <td>Activity Sensor 2</td>
+                <td>D34</td>
+                <td>Activity monitoring for Machine 2</td>
+            </tr>
+            <tr>
+                <td>Activity Sensor 3</td>
+                <td>D39</td>
+                <td>Activity monitoring for Machine 3</td>
+            </tr>
+            <tr>
+                <td>Activity Sensor 4</td>
+                <td>D36</td>
+                <td>Activity monitoring for Machine 4</td>
+            </tr>
+            <tr>
+                <td>Status LED</td>
+                <td>D13</td>
+                <td>System status indicator</td>
+            </tr>
+            <tr>
+                <td>RGB LED</td>
+                <td>D12</td>
+                <td>Multi-color status indicator</td>
+            </tr>
+            <tr>
+                <td>Buzzer</td>
+                <td>D16</td>
+                <td>Audio feedback</td>
+            </tr>
+            <tr>
+                <td>Reset Button</td>
+                <td>D17</td>
+                <td>Manual configuration reset</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div id="office-reader" class="tabcontent">
+        <h2>Office RFID Reader Node Wiring</h2>
+        
+        <div class="diagram-container">
+            <svg width="800" height="500" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+                <!-- ESP32 DevKit V1 -->
+                <rect x="350" y="150" width="200" height="200" rx="10" fill="#d1d1d1" stroke="#000" stroke-width="2"/>
+                <text x="450" y="180" text-anchor="middle" font-weight="bold">ESP32 DevKit V1</text>
+                
+                <!-- ESP32 Pin Labels -->
+                <!-- Left side pins -->
+                <text x="340" y="210" text-anchor="end">3V3</text>
+                <text x="340" y="230" text-anchor="end">GND</text>
+                <text x="340" y="250" text-anchor="end">D5 (SS)</text>
+                <text x="340" y="270" text-anchor="end">D18 (SCK)</text>
+                <text x="340" y="290" text-anchor="end">D22 (RST)</text>
+                <text x="340" y="310" text-anchor="end">D23</text>
+                
+                <!-- Right side pins -->
+                <text x="560" y="210" text-anchor="start">D13 (LED)</text>
+                <text x="560" y="230" text-anchor="start">D12 (RGB)</text>
+                <text x="560" y="250" text-anchor="start">D26 (MISO)</text>
+                <text x="560" y="270" text-anchor="start">D25 (MOSI)</text>
+                <text x="560" y="290" text-anchor="start">D16 (Buzzer)</text>
+                <text x="560" y="310" text-anchor="start">D17 (Button)</text>
+                
+                <!-- RFID Reader -->
+                <rect x="150" y="150" width="120" height="100" rx="5" fill="#b3d9ff" stroke="#000" stroke-width="2"/>
+                <text x="210" y="180" text-anchor="middle" font-weight="bold">RFID Reader</text>
+                <text x="210" y="200" text-anchor="middle" font-size="12">Office Registration</text>
+                
+                <!-- Connection Lines -->
+                <line x1="270" y1="170" x2="350" y2="210" stroke="#ff0000" stroke-width="2"/>
+                <text x="310" y="180" text-anchor="middle" fill="#ff0000" font-size="12">3.3V</text>
+                
+                <line x1="270" y1="190" x2="350" y2="230" stroke="#000000" stroke-width="2"/>
+                <text x="310" y="200" text-anchor="middle" fill="#000000" font-size="12">GND</text>
+                
+                <line x1="270" y1="210" x2="350" y2="250" stroke="#0066cc" stroke-width="2"/>
+                <text x="310" y="220" text-anchor="middle" fill="#0066cc" font-size="12">SS (D5)</text>
+                
+                <line x1="270" y1="230" x2="350" y2="270" stroke="#00cc00" stroke-width="2"/>
+                <text x="310" y="240" text-anchor="middle" fill="#00cc00" font-size="12">SCK (D18)</text>
+                
+                <line x1="270" y1="240" x2="550" y2="250" stroke="#cc00cc" stroke-width="2"/>
+                <text x="310" y="260" text-anchor="middle" fill="#cc00cc" font-size="12">MISO (D26)</text>
+                
+                <line x1="270" y1="250" x2="550" y2="270" stroke="#ffcc00" stroke-width="2"/>
+                <text x="310" y="280" text-anchor="middle" fill="#ffcc00" font-size="12">MOSI (D25)</text>
+                
+                <line x1="270" y1="260" x2="350" y2="290" stroke="#ff6600" stroke-width="2"/>
+                <text x="310" y="300" text-anchor="middle" fill="#ff6600" font-size="12">RST (D22)</text>
+            </svg>
+        </div>
+        
+        <div class="legend">
+            <h3>Connection Legend</h3>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #ff0000;"></div>
+                <span>Power (3.3V)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #000000;"></div>
+                <span>Ground (GND)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #0066cc;"></div>
+                <span>Slave Select (SS) Line</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #00cc00;"></div>
+                <span>SPI Clock (SCK)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #cc00cc;"></div>
+                <span>MISO (Master In Slave Out)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #ffcc00;"></div>
+                <span>MOSI (Master Out Slave In)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #ff6600;"></div>
+                <span>Reset (RST) Line</span>
+            </div>
+        </div>
+        
+        <div class="notes">
+            <h3>Wiring Notes</h3>
+            <ul>
+                <li>The Office Reader node uses only one RFID reader.</li>
+                <li>This node is used for registering new RFID cards in the office environment.</li>
+                <li>The buzzer provides audio feedback when a card is successfully read.</li>
+                <li>The RGB LED provides visual feedback about the status of card reading.</li>
+                <li>This node does not control any machines or relays.</li>
+                <li>The node sends read card IDs to the server for registration.</li>
+            </ul>
+        </div>
+        
+        <h3>Pin Assignment Table</h3>
+        <table>
+            <tr>
+                <th>Component</th>
+                <th>ESP32 Pin</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>RFID Reader</td>
+                <td>SS: D5, RST: D22</td>
+                <td>Office card registration reader</td>
+            </tr>
+            <tr>
+                <td>SPI Bus</td>
+                <td>MOSI: D25, MISO: D26, SCK: D18</td>
+                <td>Data bus for RFID reader</td>
+            </tr>
+            <tr>
+                <td>Status LED</td>
+                <td>D13</td>
+                <td>System status indicator</td>
+            </tr>
+            <tr>
+                <td>RGB LED</td>
+                <td>D12</td>
+                <td>Card read status indicator</td>
+            </tr>
+            <tr>
+                <td>Buzzer</td>
+                <td>D16</td>
+                <td>Audio feedback for card reading</td>
+            </tr>
+            <tr>
+                <td>Reset Button</td>
+                <td>D17</td>
+                <td>Manual configuration reset</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div id="accessory-io" class="tabcontent">
+        <h2>Accessory I/O Controller Node Wiring</h2>
+        
+        <div class="diagram-container">
+            <svg width="1000" height="600" viewBox="0 0 1000 600" xmlns="http://www.w3.org/2000/svg">
+                <!-- ESP32 DevKit V1 -->
+                <rect x="400" y="150" width="200" height="300" rx="10" fill="#d1d1d1" stroke="#000" stroke-width="2"/>
+                <text x="500" y="180" text-anchor="middle" font-weight="bold">ESP32 DevKit V1</text>
+                
+                <!-- ESP32 Pin Labels -->
+                <!-- Left side pins -->
+                <text x="390" y="210" text-anchor="end">3V3</text>
+                <text x="390" y="230" text-anchor="end">GND</text>
+                <text x="390" y="250" text-anchor="end">D5</text>
+                <text x="390" y="270" text-anchor="end">D18</text>
+                <text x="390" y="290" text-anchor="end">D19</text>
+                <text x="390" y="310" text-anchor="end">D21</text>
+                <text x="390" y="330" text-anchor="end">D22</text>
+                <text x="390" y="350" text-anchor="end">D23</text>
+                
+                <!-- Right side pins -->
+                <text x="610" y="210" text-anchor="start">D13 (LED)</text>
+                <text x="610" y="230" text-anchor="start">D12 (RGB)</text>
+                <text x="610" y="250" text-anchor="start">D14 (Output4)</text>
+                <text x="610" y="270" text-anchor="start">D27 (Output3)</text>
+                <text x="610" y="290" text-anchor="start">D26</text>
+                <text x="610" y="310" text-anchor="start">D25</text>
+                <text x="610" y="330" text-anchor="start">D33 (Output2)</text>
+                <text x="610" y="350" text-anchor="start">D32 (Output1)</text>
+                <text x="610" y="370" text-anchor="start">D35 (Input1)</text>
+                <text x="610" y="390" text-anchor="start">D34 (Input2)</text>
+                <text x="610" y="410" text-anchor="start">D39 (Input3)</text>
+                <text x="610" y="430" text-anchor="start">D36 (Input4)</text>
+                
+                <!-- Relay/Output Module -->
+                <rect x="750" y="100" width="140" height="180" rx="5" fill="#ffe6cc" stroke="#000" stroke-width="2"/>
+                <text x="820" y="130" text-anchor="middle" font-weight="bold">Output Module</text>
+                <text x="820" y="150" text-anchor="middle" font-size="12">4-Channel</text>
+                <text x="800" y="180" text-anchor="middle" font-size="12">IN1</text>
+                <text x="800" y="200" text-anchor="middle" font-size="12">IN2</text>
+                <text x="800" y="220" text-anchor="middle" font-size="12">IN3</text>
+                <text x="800" y="240" text-anchor="middle" font-size="12">IN4</text>
+                <text x="800" y="260" text-anchor="middle" font-size="12">GND</text>
+                <text x="800" y="280" text-anchor="middle" font-size="12">VCC</text>
+                
+                <!-- Input Sensors -->
+                <rect x="750" y="320" width="140" height="180" rx="5" fill="#d9f2d9" stroke="#000" stroke-width="2"/>
+                <text x="820" y="350" text-anchor="middle" font-weight="bold">Input Sensors</text>
+                <text x="820" y="370" text-anchor="middle" font-size="12">4-Channel</text>
+                <text x="800" y="400" text-anchor="middle" font-size="12">Input 1</text>
+                <text x="800" y="420" text-anchor="middle" font-size="12">Input 2</text>
+                <text x="800" y="440" text-anchor="middle" font-size="12">Input 3</text>
+                <text x="800" y="460" text-anchor="middle" font-size="12">Input 4</text>
+                <text x="800" y="480" text-anchor="middle" font-size="12">GND</text>
+                
+                <!-- Connection Lines -->
+                <!-- Output Connections -->
+                <line x1="750" y1="180" x2="600" y2="350" stroke="#ff9900" stroke-width="2"/>
+                <text x="680" y="260" text-anchor="middle" fill="#ff9900" font-size="12">Output1 (D32)</text>
+                
+                <line x1="750" y1="200" x2="600" y2="330" stroke="#9900cc" stroke-width="2"/>
+                <text x="680" y="240" text-anchor="middle" fill="#9900cc" font-size="12">Output2 (D33)</text>
+                
+                <line x1="750" y1="220" x2="600" y2="270" stroke="#009999" stroke-width="2"/>
+                <text x="680" y="220" text-anchor="middle" fill="#009999" font-size="12">Output3 (D27)</text>
+                
+                <line x1="750" y1="240" x2="600" y2="250" stroke="#666600" stroke-width="2"/>
+                <text x="680" y="200" text-anchor="middle" fill="#666600" font-size="12">Output4 (D14)</text>
+                
+                <line x1="750" y1="260" x2="400" y2="230" stroke="#000000" stroke-width="2"/>
+                <text x="680" y="180" text-anchor="middle" fill="#000000" font-size="12">GND</text>
+                
+                <line x1="750" y1="280" x2="400" y2="210" stroke="#ff0000" stroke-width="2"/>
+                <text x="680" y="160" text-anchor="middle" fill="#ff0000" font-size="12">3.3V</text>
+                
+                <!-- Input Sensor Connections -->
+                <line x1="750" y1="400" x2="600" y2="370" stroke="#006600" stroke-width="2"/>
+                <text x="680" y="380" text-anchor="middle" fill="#006600" font-size="12">Input1 (D35)</text>
+                
+                <line x1="750" y1="420" x2="600" y2="390" stroke="#660066" stroke-width="2"/>
+                <text x="680" y="400" text-anchor="middle" fill="#660066" font-size="12">Input2 (D34)</text>
+                
+                <line x1="750" y1="440" x2="600" y2="410" stroke="#006666" stroke-width="2"/>
+                <text x="680" y="420" text-anchor="middle" fill="#006666" font-size="12">Input3 (D39)</text>
+                
+                <line x1="750" y1="460" x2="600" y2="430" stroke="#666666" stroke-width="2"/>
+                <text x="680" y="440" text-anchor="middle" fill="#666666" font-size="12">Input4 (D36)</text>
+                
+                <line x1="750" y1="480" x2="400" y2="230" stroke="#000000" stroke-width="2"/>
+                <text x="680" y="480" text-anchor="middle" fill="#000000" font-size="12">GND</text>
+            </svg>
+        </div>
+        
+        <div class="legend">
+            <h3>Connection Legend</h3>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #ff0000;"></div>
+                <span>Power (3.3V)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #000000;"></div>
+                <span>Ground (GND)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #ff9900;"></div>
+                <span>Output Control Lines</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #006600;"></div>
+                <span>Input Sensor Lines</span>
+            </div>
+        </div>
+        
+        <div class="notes">
+            <h3>Wiring Notes</h3>
+            <ul>
+                <li>The Accessory I/O Controller node manages external devices like fans, lights, or sensors.</li>
+                <li>Output channels can be configured with activation and deactivation delays.</li>
+                <li>Inputs can be monitored for state changes and can trigger outputs based on configuration.</li>
+                <li>Outputs can be controlled manually through the web interface.</li>
+                <li>Outputs can also be linked to specific machines or events.</li>
+                <li>This node uses digital output pins for relay control and analog input pins for sensors.</li>
+                <li>The status LED indicates the system operational state.</li>
+                <li>The RGB LED can be used to indicate different output states.</li>
+            </ul>
+        </div>
+        
+        <h3>Pin Assignment Table</h3>
+        <table>
+            <tr>
+                <th>Component</th>
+                <th>ESP32 Pin</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>Output 1</td>
+                <td>D32</td>
+                <td>Controls accessory device 1 (e.g., fan, light)</td>
+            </tr>
+            <tr>
+                <td>Output 2</td>
+                <td>D33</td>
+                <td>Controls accessory device 2</td>
+            </tr>
+            <tr>
+                <td>Output 3</td>
+                <td>D27</td>
+                <td>Controls accessory device 3</td>
+            </tr>
+            <tr>
+                <td>Output 4</td>
+                <td>D14</td>
+                <td>Controls accessory device 4</td>
+            </tr>
+            <tr>
+                <td>Input 1</td>
+                <td>D35</td>
+                <td>Monitors external sensor 1</td>
+            </tr>
+            <tr>
+                <td>Input 2</td>
+                <td>D34</td>
+                <td>Monitors external sensor 2</td>
+            </tr>
+            <tr>
+                <td>Input 3</td>
+                <td>D39</td>
+                <td>Monitors external sensor 3</td>
+            </tr>
+            <tr>
+                <td>Input 4</td>
+                <td>D36</td>
+                <td>Monitors external sensor 4</td>
+            </tr>
+            <tr>
+                <td>Status LED</td>
+                <td>D13</td>
+                <td>System status indicator</td>
+            </tr>
+            <tr>
+                <td>RGB LED</td>
+                <td>D12</td>
+                <td>Output status indicator</td>
+            </tr>
+        </table>
+    </div>
+    
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tablinks");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+    </script>
+</body>
+</html>
+)rawliteral";
+
+// Implementation of the extern declaration
+const char* WIRING_DIAGRAM_HTML = WIRING_DIAGRAM_HTML_CONTENT;
+
+#endif // WIRING_DIAGRAM_H

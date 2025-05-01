@@ -1,0 +1,459 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+    pre {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 4px;
+        padding: 15px;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+    
+    .sketch-container {
+        position: relative;
+    }
+    
+    .copy-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 10;
+    }
+    
+    .code-form {
+        margin-top: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1><i class="fas fa-microchip me-2"></i>Arduino Sketches</h1>
+        <p class="lead">These sketch files can be downloaded and flashed to your Arduino devices.</p>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="arduino-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="machine-tab" data-bs-toggle="tab" data-bs-target="#machine-sketch" type="button" role="tab" aria-controls="machine-sketch" aria-selected="true">
+                            Machine Monitor
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="office-tab" data-bs-toggle="tab" data-bs-target="#office-sketch" type="button" role="tab" aria-controls="office-sketch" aria-selected="false">
+                            Office RFID Reader
+                        </button>
+                    </li>
+                    {% if esp32_available %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="esp32-tab" data-bs-toggle="tab" data-bs-target="#esp32-sketch" type="button" role="tab" aria-controls="esp32-sketch" aria-selected="false">
+                            ESP32 Monitor
+                        </button>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="config-tab" data-bs-toggle="tab" data-bs-target="#config-settings" type="button" role="tab" aria-controls="config-settings" aria-selected="false">
+                            Network Configuration
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="arduino-tab-content">
+                    <!-- Machine Monitor Sketch Tab -->
+                    <div class="tab-pane fade show active" id="machine-sketch" role="tabpanel" aria-labelledby="machine-tab">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4>Machine Monitor Sketch</h4>
+                            <div>
+                                <a href="#" class="btn btn-outline-primary btn-sm" onclick="downloadSketch('machine-sketch-content', 'machine_monitor.ino')">
+                                    <i class="fas fa-download me-1"></i> Download Sketch
+                                </a>
+                                <a href="#" class="btn btn-outline-primary btn-sm ms-2" onclick="downloadSketch('machine-wiring-content', 'machine_wiring_diagram.txt')">
+                                    <i class="fas fa-download me-1"></i> Download Wiring Guide
+                                </a>
+                            </div>
+                        </div>
+                        <p>This sketch should be loaded onto Arduino devices that will be controlling machines. <strong>Each Arduino can control up to 4 machines</strong> with individual RFID readers, LEDs, activity sensing, and relay control.</p>
+                        
+                        <ul class="nav nav-tabs mb-3" id="machine-detail-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="machine-sketch-tab" data-bs-toggle="tab" data-bs-target="#machine-sketch-content-tab" type="button" role="tab">
+                                    Sketch Code
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="machine-wiring-tab" data-bs-toggle="tab" data-bs-target="#machine-wiring-content-tab" type="button" role="tab">
+                                    Wiring Diagram
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="machine-visual-tab" data-bs-toggle="tab" data-bs-target="#machine-visual-diagram-tab" type="button" role="tab">
+                                    Visual Diagram
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content" id="machine-detail-content">
+                            <!-- Machine Sketch Code -->
+                            <div class="tab-pane fade show active" id="machine-sketch-content-tab" role="tabpanel">
+                                <div class="sketch-container">
+                                    <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="copyToClipboard('machine-sketch-content')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                    <pre id="machine-sketch-content" class="language-cpp">{{ machine_sketch|replace('$SERVER_IP$', server_ip)|replace('$SERVER_PORT$', server_port) }}</pre>
+                                </div>
+                            </div>
+                            
+                            <!-- Machine Wiring Text -->
+                            <div class="tab-pane fade" id="machine-wiring-content-tab" role="tabpanel">
+                                <div class="sketch-container">
+                                    <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="copyToClipboard('machine-wiring-content')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                    <pre id="machine-wiring-content">{{ machine_wiring }}</pre>
+                                </div>
+                            </div>
+                            
+                            <!-- Machine Visual Diagram -->
+                            <div class="tab-pane fade" id="machine-visual-diagram-tab" role="tabpanel">
+                                <div class="text-center">
+                                    <img src="{{ url_for('static', filename='img/machine_wiring_diagram.svg') }}" alt="Machine Monitor Wiring Diagram" class="img-fluid" style="max-width: 100%; height: auto;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Office RFID Reader Sketch Tab -->
+                    <div class="tab-pane fade" id="office-sketch" role="tabpanel" aria-labelledby="office-tab">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4>Office RFID Reader Sketch</h4>
+                            <div>
+                                <a href="#" class="btn btn-outline-primary btn-sm" onclick="downloadSketch('office-sketch-content', 'office_reader.ino')">
+                                    <i class="fas fa-download me-1"></i> Download Sketch
+                                </a>
+                                <a href="#" class="btn btn-outline-primary btn-sm ms-2" onclick="downloadSketch('office-wiring-content', 'office_wiring_diagram.txt')">
+                                    <i class="fas fa-download me-1"></i> Download Wiring Guide
+                                </a>
+                            </div>
+                        </div>
+                        <p>This sketch should be loaded onto an Arduino device in the office that will be used for registering new RFID cards.</p>
+                        
+                        <ul class="nav nav-tabs mb-3" id="office-detail-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="office-sketch-tab" data-bs-toggle="tab" data-bs-target="#office-sketch-content-tab" type="button" role="tab">
+                                    Sketch Code
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="office-wiring-tab" data-bs-toggle="tab" data-bs-target="#office-wiring-content-tab" type="button" role="tab">
+                                    Wiring Diagram
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="office-visual-tab" data-bs-toggle="tab" data-bs-target="#office-visual-diagram-tab" type="button" role="tab">
+                                    Visual Diagram
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content" id="office-detail-content">
+                            <!-- Office Sketch Code -->
+                            <div class="tab-pane fade show active" id="office-sketch-content-tab" role="tabpanel">
+                                <div class="sketch-container">
+                                    <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="copyToClipboard('office-sketch-content')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                    <pre id="office-sketch-content" class="language-cpp">{{ office_sketch|replace('$SERVER_IP$', server_ip)|replace('$SERVER_PORT$', server_port) }}</pre>
+                                </div>
+                            </div>
+                            
+                            <!-- Office Wiring Text -->
+                            <div class="tab-pane fade" id="office-wiring-content-tab" role="tabpanel">
+                                <div class="sketch-container">
+                                    <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="copyToClipboard('office-wiring-content')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                    <pre id="office-wiring-content">{{ office_wiring }}</pre>
+                                </div>
+                            </div>
+                            
+                            <!-- Office Visual Diagram -->
+                            <div class="tab-pane fade" id="office-visual-diagram-tab" role="tabpanel">
+                                <div class="text-center">
+                                    <img src="{{ url_for('static', filename='img/office_wiring_diagram.svg') }}" alt="Office RFID Reader Wiring Diagram" class="img-fluid" style="max-width: 100%; height: auto;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if esp32_available %}
+                    <!-- ESP32 Monitor Sketch Tab -->
+                    <div class="tab-pane fade" id="esp32-sketch" role="tabpanel" aria-labelledby="esp32-tab">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4>ESP32 Machine Monitor Sketch</h4>
+                            <div>
+                                <a href="#" class="btn btn-outline-primary btn-sm" onclick="downloadSketch('esp32-sketch-content', 'esp32_machine_monitor.ino')">
+                                    <i class="fas fa-download me-1"></i> Download Sketch
+                                </a>
+                                <a href="#" class="btn btn-outline-primary btn-sm ms-2" onclick="downloadSketch('esp32-wiring-content', 'esp32_wiring_diagram.txt')">
+                                    <i class="fas fa-download me-1"></i> Download Wiring Guide
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-success">
+                            <h5><i class="fas fa-microchip me-2"></i>ESP32 Advanced Features</h5>
+                            <p>This enhanced version offers significant improvements over the Arduino Uno implementation:</p>
+                            <ul>
+                                <li><strong>Web Configuration Interface</strong> - Set up your device via a browser</li>
+                                <li><strong>WiFi Connectivity</strong> - No Ethernet shield required</li>
+                                <li><strong>OTA Updates</strong> - Update firmware wirelessly</li>
+                                <li><strong>Enhanced Security</strong> - Better credential storage</li>
+                                <li><strong>Configuration Portal</strong> - Easy setup with no code changes</li>
+                                <li><strong>Activity Counting</strong> - Improved analog sensing and reporting</li>
+                            </ul>
+                        </div>
+                        
+                        <ul class="nav nav-tabs mb-3" id="esp32-detail-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="esp32-sketch-tab" data-bs-toggle="tab" data-bs-target="#esp32-sketch-content-tab" type="button" role="tab">
+                                    Sketch Code
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="esp32-wiring-tab" data-bs-toggle="tab" data-bs-target="#esp32-wiring-content-tab" type="button" role="tab">
+                                    Wiring Diagram
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="esp32-visual-tab" data-bs-toggle="tab" data-bs-target="#esp32-visual-diagram-tab" type="button" role="tab">
+                                    Visual Diagram
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content" id="esp32-detail-content">
+                            <!-- ESP32 Sketch Code -->
+                            <div class="tab-pane fade show active" id="esp32-sketch-content-tab" role="tabpanel">
+                                <div class="sketch-container">
+                                    <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="copyToClipboard('esp32-sketch-content')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                    <pre id="esp32-sketch-content" class="language-cpp">{{ esp32_sketch|replace('$SERVER_IP$', server_ip)|replace('$SERVER_PORT$', server_port) }}</pre>
+                                </div>
+                            </div>
+                            
+                            <!-- ESP32 Wiring Text -->
+                            <div class="tab-pane fade" id="esp32-wiring-content-tab" role="tabpanel">
+                                <div class="sketch-container">
+                                    <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="copyToClipboard('esp32-wiring-content')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                    <pre id="esp32-wiring-content">{{ esp32_wiring }}</pre>
+                                </div>
+                            </div>
+                            
+                            <!-- ESP32 Visual Diagram -->
+                            <div class="tab-pane fade" id="esp32-visual-diagram-tab" role="tabpanel">
+                                <div class="text-center">
+                                    <img src="{{ url_for('static', filename='img/esp32_wiring_diagram.svg') }}" alt="ESP32 Wiring Diagram" class="img-fluid" style="max-width: 100%; height: auto;">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h5>Required Libraries</h5>
+                            <p>Make sure to install these libraries via the Arduino Library Manager:</p>
+                            <ul>
+                                <li>WiFi (built-in with ESP32)</li>
+                                <li>ESPmDNS</li>
+                                <li>WebServer</li>
+                                <li>SPI</li>
+                                <li>MFRC522 (for RFID readers)</li>
+                                <li>FastLED</li>
+                                <li>Preferences</li>
+                                <li>EEPROM</li>
+                                <li>HTTPClient</li>
+                                <li>ArduinoJson</li>
+                                <li>Update (for OTA)</li>
+                                <li>NTPClient</li>
+                            </ul>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Configuration Settings Tab -->
+                    <div class="tab-pane fade" id="config-settings" role="tabpanel" aria-labelledby="config-tab">
+                        <div class="mb-4">
+                            <h4>Network Configuration</h4>
+                            <p>Customize these settings to match your network environment. The changes will be applied to the code when you view or download the sketches.</p>
+                            
+                            <form action="{{ url_for('arduino_sketches') }}" method="post" class="code-form">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="server-ip" class="form-label">Server IP Address</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="server-ip" name="server_ip" value="{{ server_ip }}" 
+                                                   pattern="^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                                                   required>
+                                            <button class="btn btn-outline-secondary" type="button" onclick="detectServerIp()">Detect</button>
+                                        </div>
+                                        <div class="form-text">The IP address of this server on your local network</div>
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <label for="server-port" class="form-label">Server Port</label>
+                                        <input type="number" class="form-control" id="server-port" name="server_port" 
+                                               value="{{ server_port }}" min="1" max="65535" required>
+                                        <div class="form-text">The port this server is running on (usually 5000)</div>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i> Save Configuration
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h4>Deployment Instructions</h4>
+                            <div class="alert alert-info">
+                                <h5><i class="fas fa-info-circle me-2"></i>Arduino Setup Steps</h5>
+                                <ol>
+                                    <li>Download the Arduino sketches for your devices</li>
+                                    <li>Install required libraries: Ethernet, FastLED, SPI, and Time</li>
+                                    <li>Connect your Arduino to your computer and upload the sketch</li>
+                                    <li>Connect the Arduino to your local network via ethernet</li>
+                                    <li>Connect the required hardware:
+                                        <ul>
+                                            <li>For Machine Monitor:
+                                                <ul>
+                                                    <li>WS2812B LEDs (4 of them) to pin 2</li>
+                                                    <li>Relays to pins 7, 8, 9, and 10</li>
+                                                    <li>Activity sensors to pins A0, A1, A2, and A3</li>
+                                                    <li>RFID readers connected via SoftwareSerial on pins 22-29</li>
+                                                </ul>
+                                            </li>
+                                            <li>For Office Reader:
+                                                <ul>
+                                                    <li>WS2812B LED to pin 6</li>
+                                                    <li>Registration button to pin 4</li>
+                                                </ul>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <li>Make sure this server is running and accessible on the network</li>
+                                </ol>
+                            </div>
+                            
+                            {% if esp32_available %}
+                            <div class="alert alert-info mt-4">
+                                <h5><i class="fas fa-microchip me-2"></i>ESP32 Setup Steps</h5>
+                                <ol>
+                                    <li>Download the ESP32 sketch</li>
+                                    <li>Install required libraries: WiFi, ESPmDNS, WebServer, SPI, MFRC522, FastLED, Preferences, EEPROM, HTTPClient, ArduinoJson, Update, NTPClient</li>
+                                    <li>Connect your ESP32 to your computer and upload the sketch</li>
+                                    <li>For first-time setup:
+                                        <ul>
+                                            <li>The ESP32 will create its own WiFi network named "ESP32-RFID" with password "setup1234"</li>
+                                            <li>Connect to this network with your phone or computer</li>
+                                            <li>Open a browser and navigate to http://192.168.4.1</li>
+                                            <li>Configure your WiFi settings and machine IDs</li>
+                                            <li>Save the configuration and the ESP32 will reboot and connect to your WiFi network</li>
+                                        </ul>
+                                    </li>
+                                    <li>Follow the wiring diagram to connect the RFID readers, relays, activity sensors, and LED strip</li>
+                                    <li>After setup, you can access the ESP32's web interface by visiting its IP address in your browser</li>
+                                    <li>If you need to reset the configuration, press and hold the BOOT button for 10 seconds</li>
+                                </ol>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function copyToClipboard(elementId) {
+        const element = document.getElementById(elementId);
+        const text = element.textContent;
+        
+        navigator.clipboard.writeText(text).then(() => {
+            // Create toast notification
+            const toast = document.createElement('div');
+            toast.className = 'position-fixed bottom-0 end-0 p-3';
+            toast.style.zIndex = 1070;
+            toast.innerHTML = `
+                <div class="toast hide" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="toast-header">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        <strong class="me-auto">Success</strong>
+                        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                    <div class="toast-body">
+                        Code copied to clipboard!
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            const toastEl = toast.querySelector('.toast');
+            const bsToast = new bootstrap.Toast(toastEl);
+            bsToast.show();
+            
+            // Remove toast after it's hidden
+            toastEl.addEventListener('hidden.bs.toast', function () {
+                document.body.removeChild(toast);
+            });
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+            alert('Failed to copy to clipboard. Please try again.');
+        });
+    }
+    
+    function downloadSketch(elementId, filename) {
+        const element = document.getElementById(elementId);
+        const text = element.textContent;
+        
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        
+        // Cleanup
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 0);
+    }
+    
+    function detectServerIp() {
+        // Fetch the server's IP address
+        fetch('/api/server_ip')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('server-ip').value = data.ip;
+            })
+            .catch(error => {
+                console.error('Error detecting server IP:', error);
+                alert('Could not detect server IP. Please enter it manually.');
+            });
+    }
+</script>
+{% endblock %}

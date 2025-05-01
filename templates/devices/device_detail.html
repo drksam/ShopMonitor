@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+    .device-header {
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    .status-badge {
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .status-online {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .status-offline {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    .status-unreachable {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    .detail-card {
+        height: 100%;
+    }
+    .info-title {
+        font-size: 0.875rem;
+        color: #6c757d;
+        margin-bottom: 5px;
+    }
+    .info-value {
+        font-weight: 500;
+    }
+    .machine-item {
+        border-left: 3px solid #007bff;
+        padding-left: 10px;
+        margin-bottom: 10px;
+    }
+    .firmware-card {
+        border-left: 3px solid #28a745;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('devices_list') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i> Back to Device List
+    </a>
+</div>
+
+<div class="device-header d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="mb-1">{{ device.name }}</h2>
+        <div class="text-muted">{{ device.location }}</div>
+    </div>
+    <div>
+        <span class="status-badge status-{{ device.status }}">{{ device.status|title }}</span>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card detail-card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Device Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="info-title">IP Address</div>
+                        <div class="info-value">{{ device.ip }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-title">Port</div>
+                        <div class="info-value">{{ device.port }}</div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="info-title">ID</div>
+                        <div class="info-value">{{ device.id }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-title">Type</div>
+                        <div class="info-value">{{ device.node_type|title }}</div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="info-title">Zone Count</div>
+                        <div class="info-value">{{ device.zone_count }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-title">Last Seen</div>
+                        <div class="info-value">{{ device.last_seen.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                    </div>
+                </div>
+                
+                {% if device.status == 'online' and device.details %}
+                <hr>
+                <h6>Device Details</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="info-title">Firmware Version</div>
+                        <div class="info-value">{{ device.details.firmware_version|default('Unknown') }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-title">Uptime</div>
+                        <div class="info-value">{{ device.details.uptime|default('Unknown') }}</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                {% if device.status == 'online' %}
+                <div class="d-grid gap-2">
+                    <a href="http://{{ device.ip }}" target="_blank" class="btn btn-primary">
+                        <i class="fas fa-external-link-alt me-1"></i> Open Web Interface
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card detail-card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Machine Configuration</h5>
+            </div>
+            <div class="card-body">
+                <h6>Attached Machines</h6>
+                {% if device.db_machines %}
+                    {% for machine in device.db_machines %}
+                    <div class="machine-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-bold">{{ machine.name }}</div>
+                                <div class="text-muted small">ID: {{ machine.machine_id }} | Zone: {{ machine.zone }}</div>
+                            </div>
+                            {% if machine.id %}
+                            <a href="{{ url_for('edit_machine', machine_id=machine.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('add_machine') }}" class="btn btn-sm btn-outline-success">
+                                <i class="fas fa-plus"></i> Register
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="alert alert-info">
+                        No machines configured for this device.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4 firmware-card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-microchip me-2"></i>Firmware Management</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Upload New Firmware</h6>
+                <form action="{{ url_for('device_update', device_id=device.id) }}" method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="firmware" class="form-label">Firmware Binary (.bin)</label>
+                        <input type="file" class="form-control" id="firmware" name="firmware" accept=".bin">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="deploy_now" name="deploy_now" value="yes">
+                        <label class="form-check-label" for="deploy_now">Deploy immediately after upload</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-upload me-1"></i> Upload Firmware
+                    </button>
+                </form>
+            </div>
+            
+            <div class="col-md-6">
+                <h6>Available Firmware Files</h6>
+                {% if firmware_files %}
+                <form action="{{ url_for('device_update', device_id=device.id) }}" method="POST">
+                    <div class="mb-3">
+                        <label for="selected_firmware" class="form-label">Select Firmware</label>
+                        <select class="form-select" id="selected_firmware" name="selected_firmware">
+                            {% for firmware in firmware_files %}
+                            <option value="{{ firmware }}">{{ firmware }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success" {% if device.status != 'online' %}disabled{% endif %}>
+                        <i class="fas fa-bolt me-1"></i> Deploy to Device
+                    </button>
+                </form>
+                {% else %}
+                <div class="alert alert-warning">
+                    No firmware files available. Upload a .bin file first.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-terminal me-2"></i>Device Management</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Register in Database</h6>
+                <p>If this device isn't registered in the database, you can create a Node record for it:</p>
+                <form action="{{ url_for('add_node') }}" method="POST">
+                    <input type="hidden" name="node_id" value="{{ device.id }}">
+                    <input type="hidden" name="name" value="{{ device.name }}">
+                    <input type="hidden" name="ip_address" value="{{ device.ip }}">
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="description" name="description" value="{{ device.location }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="node_type" class="form-label">Node Type</label>
+                        <select class="form-select" id="node_type" name="node_type">
+                            <option value="machine_monitor" {% if device.node_type == 'machine_monitor' %}selected{% endif %}>Machine Monitor</option>
+                            <option value="office_reader" {% if device.node_type == 'office_reader' %}selected{% endif %}>Office RFID Reader</option>
+                            <option value="accessory_io" {% if device.node_type == 'accessory_io' %}selected{% endif %}>Accessory IO</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Register Node
+                    </button>
+                </form>
+            </div>
+            
+            <div class="col-md-6">
+                <h6>Actions</h6>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-warning" {% if device.status != 'online' %}disabled{% endif %}>
+                        <i class="fas fa-sync-alt me-1"></i> Restart Device
+                    </button>
+                    <button class="btn btn-outline-danger" {% if device.status != 'online' %}disabled{% endif %}>
+                        <i class="fas fa-trash me-1"></i> Reset Configuration
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Confirmation for firmware deployment
+    document.querySelectorAll('button[type="submit"]').forEach(button => {
+        button.addEventListener('click', function(e) {
+            if (this.classList.contains('btn-success')) {
+                if (!confirm('Are you sure you want to deploy this firmware to the device? The device will reboot during this process.')) {
+                    e.preventDefault();
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

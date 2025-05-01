@@ -1,0 +1,93 @@
+Machine Monitor Visual Layout
+==========================
+
+                   +----------------------------------+
+                   |                                  |
+                   |  Machine Monitor Control System  |
+                   |                                  |
+                   +----------------------------------+
+                           |               |
+                           |               |
+          +----------------+               +----------------+
+          |                                                 |
+          v                                                 v
++-------------------+                              +-------------------+
+|                   |                              |                   |
+|   Control Panel   |                              |   Machine Zone    |
+|                   |                              |                   |
++-------------------+                              +-------------------+
+          |                                                 |
+          v                                                 v
++-------------------+                              +-------------------+
+|  +-----------+    |                              |     Machine      |
+|  | Status    |    |                              |     +------+     |
+|  | Indicator |    |                              |     |Power |     |
+|  | LEDs      |    |                              |     |Relay |     |
+|  +-----------+    |                              |     +------+     |
+|                   |                              |        |         |
+|  +-----------+    |                              |        v         |
+|  | Network   |    |                              |  +-----------+   |
+|  | Connection|    |                              |  | Machine   |   |
+|  +-----------+    |                              |  | Power     |   |
+|                   |                              |  +-----------+   |
+|  +-----------+    |                              |        |         |
+|  | Arduino   |    |                              |        v         |
+|  | Mega      |----+--------------------------+-->|  +-----------+   |
+|  +-----------+    |                          |   |  | Activity  |   |
+|                   |                          |   |  | Sensor    |   |
++-------------------+                          |   |  +-----------+   |
+                                               |   |                  |
+                                               |   +------------------+
+                                               |
+                                               |   +------------------+
+                                               |   |                  |
+                                               +-->|  RFID Reader     |
+                                                   |  +-----------+   |
+                                                   |  |           |   |
+                                                   |  |           |   |
+                                                   |  +-----------+   |
+                                                   |                  |
+                                                   +------------------+
+
+
+System Components Explanation:
+=============================
+
+1. Control Panel:
+   - Houses the Arduino Mega microcontroller
+   - Contains status indicator LEDs (WS2812B)
+   - Network connection (Ethernet Shield)
+   - Power supply for the system
+
+2. Machine Zone:
+   - Each machine has its own zone (up to 4 per controller)
+   - Power relay to control machine power
+   - Activity sensor to detect machine usage
+   - RFID reader for user authentication
+
+3. Operation Flow:
+   - User scans RFID tag at reader
+   - Arduino verifies authorization with server
+   - If authorized, relay activates allowing machine to operate
+   - Activity sensor monitors machine usage
+   - Status LEDs indicate current state of each machine
+   - Activity counts are sent to server periodically
+   - Inactivity triggers timeout warning and eventual shutdown
+
+4. Status Indicators:
+   - Blue: Machine idle, ready for use
+   - Green: User authorized, machine active
+   - Red: Access denied
+   - Purple: User logging out, machine shutting down
+   - Yellow (flashing): Inactivity warning
+
+5. Physical Layout:
+   - Control panel is centrally located
+   - RFID readers positioned at each machine
+   - Activity sensors connected directly to machines
+   - Power relays inline with machine power supply
+
+6. Scalability:
+   - Each Arduino Mega controls up to 4 machines
+   - Multiple controllers can be deployed throughout facility
+   - All controllers connect to central server

@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1><i class="fas fa-id-card me-2"></i>RFID Tag Registration</h1>
+        <p class="lead">Use the Office RFID Reader to register new RFID tags for your system</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-broadcast-tower me-2"></i>RFID Reader Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div id="reader-status-indicator" class="me-3">
+                        <span class="spinner-grow spinner-grow-sm text-warning" role="status"></span>
+                    </div>
+                    <div>
+                        <h5 class="mb-0" id="reader-status">Waiting for RFID tag...</h5>
+                        <p class="text-muted small mb-0">Scan a tag on the Office RFID Reader</p>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info" id="instruction-box">
+                    <p><i class="fas fa-info-circle me-2"></i>To register a new RFID tag:</p>
+                    <ol>
+                        <li>Place the new RFID tag on the Office Reader</li>
+                        <li>Wait for the tag to be detected (the LED will turn green)</li>
+                        <li>Fill in the user information form</li>
+                        <li>Click "Register Tag" to complete registration</li>
+                    </ol>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <button id="refresh-btn" class="btn btn-outline-secondary">
+                        <i class="fas fa-sync-alt me-1"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-user-plus me-2"></i>User Information</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('complete_rfid_registration') }}" id="registration-form">
+                    <div class="mb-3">
+                        <label for="rfid-tag" class="form-label">RFID Tag <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="rfid-tag" name="rfid_tag" 
+                               value="{{ session.get('pending_rfid', '') }}" readonly required>
+                        <div class="form-text">This field will be filled automatically when a tag is detected</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="user-name" class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="user-name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="user-email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="user-email" name="email">
+                        <div class="form-text">Optional: Email address for notifications</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary" id="register-btn" disabled>
+                            <i class="fas fa-save me-1"></i> Register Tag
+                        </button>
+                        <a href="{{ url_for('users') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i> Back to Users
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detected Tag Alert Modal -->
+<div class="modal fade" id="tagDetectedModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-check-circle me-2"></i>RFID Tag Detected</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>An RFID tag has been successfully detected on the Office Reader!</p>
+                <div class="alert alert-info">
+                    <strong>Tag ID:</strong> <span id="detected-tag-id"></span>
+                </div>
+                <p>Please fill out the user information form to complete registration.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Continue to Registration</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tagInput = document.getElementById('rfid-tag');
+        const registerBtn = document.getElementById('register-btn');
+        const refreshBtn = document.getElementById('refresh-btn');
+        const readerStatus = document.getElementById('reader-status');
+        const statusIndicator = document.getElementById('reader-status-indicator');
+        const tagModal = new bootstrap.Modal(document.getElementById('tagDetectedModal'));
+        const detectedTagId = document.getElementById('detected-tag-id');
+        
+        // Keep track of already seen tags to prevent duplicate modals
+        let lastSeenTag = null;
+        let isPolling = true;
+        
+        // Function to check for new RFID tags
+        function checkForRFIDTags() {
+            if (!isPolling) return; // Don't check if polling is disabled
+            
+            fetch('/api/check_office_reader')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'detected') {
+                        // Update UI for tag detection
+                        tagInput.value = data.rfid_tag;
+                        readerStatus.textContent = 'RFID Tag Detected!';
+                        statusIndicator.innerHTML = '<span class="badge bg-success rounded-circle p-2"><i class="fas fa-check"></i></span>';
+                        registerBtn.disabled = false;
+                        
+                        // Only show the modal if this is a new tag we haven't seen before
+                        if (lastSeenTag !== data.rfid_tag) {
+                            lastSeenTag = data.rfid_tag;
+                            detectedTagId.textContent = data.rfid_tag;
+                            tagModal.show();
+                            
+                            // Stop polling once we have a tag to prevent the modal from showing again
+                            isPolling = false;
+                            clearInterval(pollingInterval);
+                        }
+                    } else if (data.status === 'ready') {
+                        // Tag already processed but available for registration
+                        tagInput.value = data.rfid_tag;
+                        readerStatus.textContent = 'RFID Tag Ready for Registration';
+                        statusIndicator.innerHTML = '<span class="badge bg-success rounded-circle p-2"><i class="fas fa-check"></i></span>';
+                        registerBtn.disabled = false;
+                        
+                        // No need to show modal again, but save tag reference
+                        lastSeenTag = data.rfid_tag;
+                        
+                        // Stop polling to prevent further checks
+                        isPolling = false;
+                        clearInterval(pollingInterval);
+                    } else {
+                        // Keep waiting for a tag
+                        readerStatus.textContent = 'Waiting for RFID tag...';
+                        statusIndicator.innerHTML = '<span class="spinner-grow spinner-grow-sm text-warning" role="status"></span>';
+                        
+                        // If tag is already in input field, we'll keep it
+                        if (!tagInput.value) {
+                            registerBtn.disabled = true;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking RFID reader:', error);
+                    readerStatus.textContent = 'Error connecting to reader';
+                    statusIndicator.innerHTML = '<span class="badge bg-danger rounded-circle p-2"><i class="fas fa-exclamation-triangle"></i></span>';
+                });
+        }
+        
+        // Initial check
+        checkForRFIDTags();
+        
+        // Set up polling
+        const pollingInterval = setInterval(checkForRFIDTags, 5000); // Check every 5 seconds
+        
+        // Refresh button manually checks, resets polling, and can clear current tag
+        refreshBtn.addEventListener('click', function() {
+            // Reset the session state on the server and clear current tag if requested
+            if (lastSeenTag && confirm("Do you want to clear the current RFID tag and scan a new one?")) {
+                fetch('/api/check_office_reader?reset=true')
+                    .then(() => {
+                        // Clear the UI
+                        tagInput.value = '';
+                        lastSeenTag = null;
+                        registerBtn.disabled = true;
+                        readerStatus.textContent = 'Waiting for RFID tag...';
+                        statusIndicator.innerHTML = '<span class="spinner-grow spinner-grow-sm text-warning" role="status"></span>';
+                    })
+                    .catch(error => {
+                        console.error('Error resetting RFID reader:', error);
+                    });
+            }
+            
+            // Reset polling if it was stopped
+            if (!isPolling) {
+                isPolling = true;
+                clearInterval(pollingInterval); // Clear the old interval
+                pollingInterval = setInterval(checkForRFIDTags, 5000); // Set up a new one
+            }
+            
+            // Check for tags
+            checkForRFIDTags();
+        });
+        
+        // Enable register button if a tag is already in the input
+        if (tagInput.value) {
+            registerBtn.disabled = false;
+            readerStatus.textContent = 'RFID Tag Ready for Registration';
+            statusIndicator.innerHTML = '<span class="badge bg-success rounded-circle p-2"><i class="fas fa-check"></i></span>';
+        }
+        
+        // Clean up interval when page is unloaded
+        window.addEventListener('beforeunload', function() {
+            clearInterval(pollingInterval);
+        });
+    });
+</script>
+{% endblock %}

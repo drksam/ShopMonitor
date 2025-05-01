@@ -1,0 +1,157 @@
+ESP32 MULTI-FUNCTION NODE - WIRING DIAGRAM
+========================================
+
+Connections for a versatile ESP32-based node that can be configured as Machine Monitor, Office RFID Reader, or Accessory IO Controller.
+
+HARDWARE COMPONENTS:
+------------------
+1. ESP32 DevKit or NodeMCU ESP32 board
+2. MFRC522 RFID readers (up to 4 for Machine Monitor)
+3. WS2812B addressable RGB LEDs (status indicators)
+4. Relay modules (for Machine Monitor)
+5. Current sensors or optocouplers (for activity monitoring)
+6. Buzzer (for audio feedback)
+7. I2C OLED display (optional, for status information)
+8. Push buttons (for mode selection and configuration)
+
+SPI BUS CONFIGURATION:
+--------------------
+MOSI      -> GPIO23
+MISO      -> GPIO19
+SCK       -> GPIO18
+
+RFID READER CONNECTIONS:
+----------------------
+Reader 1:
+  SS (SDA) -> GPIO21
+  RST      -> GPIO22
+
+Reader 2:
+  SS (SDA) -> GPIO17
+  RST      -> GPIO22 (shared with Reader 1)
+
+Reader 3:
+  SS (SDA) -> GPIO16
+  RST      -> GPIO22 (shared with Readers 1&2)
+
+Reader 4:
+  SS (SDA) -> GPIO4
+  RST      -> GPIO22 (shared with Readers 1,2&3)
+
+POWER for ALL RFID Readers:
+  3.3V      -> ESP32 3.3V
+  GND       -> ESP32 GND
+
+LED INDICATORS:
+-------------
+WS2812B Data Pin -> GPIO5
+  * Connect to WS2812B DIN (data in) pin
+  * Use a 330-470 ohm resistor in series
+  * Power WS2812B from 5V supply with sufficient current capacity
+  * Connect GND of WS2812B to ESP32 GND
+
+RELAY CONTROLS (Machine Monitor Mode):
+-----------------------------------
+Relay 1 -> GPIO13 (Zone 1)
+Relay 2 -> GPIO12 (Zone 2)
+Relay 3 -> GPIO14 (Zone 3)
+Relay 4 -> GPIO27 (Zone 4)
+
+ACTIVITY MONITORING (Machine Monitor Mode):
+----------------------------------------
+Activity 1 -> GPIO36 (ADC1_CH0) (Zone 1)
+Activity 2 -> GPIO39 (ADC1_CH3) (Zone 2)
+Activity 3 -> GPIO34 (ADC1_CH6) (Zone 3)
+Activity 4 -> GPIO35 (ADC1_CH7) (Zone 4)
+
+GENERAL PURPOSE IO (Accessory IO Mode):
+-------------------------------------
+Input 1  -> GPIO36 (ADC1_CH0)
+Input 2  -> GPIO39 (ADC1_CH3)
+Input 3  -> GPIO34 (ADC1_CH6)
+Input 4  -> GPIO35 (ADC1_CH7)
+
+Output 1 -> GPIO13
+Output 2 -> GPIO12
+Output 3 -> GPIO14
+Output 4 -> GPIO27
+
+AUXILIARY COMPONENTS:
+------------------
+Buzzer       -> GPIO15
+Boot Button  -> GPIO0 (built-in to most ESP32 boards)
+I2C OLED:
+  SDA        -> GPIO21 (shared with RFID if in Office Mode)
+  SCL        -> GPIO22 (shared with RFID if in Office Mode)
+Mode Select:
+  Button 1   -> GPIO33 (pulled up internally)
+  Button 2   -> GPIO32 (pulled up internally)
+
+POWER CONSIDERATIONS:
+------------------
+1. ESP32 can be powered via USB or external 5V regulated supply
+2. WS2812B LEDs should have separate 5V power supply for more than 3-4 LEDs
+3. Relay modules typically need 5V power (VCC) but 3.3V logic is usually fine for IN pins
+4. Use level shifters if necessary for any 5V logic components
+
+NODE CONFIGURATION:
+----------------
+The node type (Machine Monitor, Office Reader, or Accessory IO) is configurable in three ways:
+1. Via the physical mode select buttons during boot:
+   - Press Button 1 during boot: Machine Monitor mode
+   - Press Button 2 during boot: Office Reader mode
+   - Press Both Buttons during boot: Accessory IO mode
+
+2. Via web interface:
+   - Navigate to http://{ESP32-IP}/config
+   - Select node type from dropdown
+
+3. Via configuration mode (hold boot button for 10 seconds):
+   - WiFi Access Point will be created named "ESP32-Node-Setup"
+   - Connect to this network with password "nodesecret"
+   - Navigate to 192.168.4.1 to access configuration portal
+
+FAULT TOLERANCE:
+--------------
+The firmware implements robust fault tolerance:
+1. Missing hardware detection (automatically disables features if hardware not found)
+2. Offline operation if server connection is lost
+3. Automatic reconnection and state synchronization when connection restored
+4. Configuration backup in EEPROM/SPIFFS
+5. Watchdog timer to prevent system lockups
+
+LED STATUS CODES:
+--------------
+1. Boot sequence: Blue rotating pattern
+2. WiFi connecting: Purple pulsing
+3. Server connecting: Yellow pulsing
+4. Ready/Idle: Slow blue breathing
+5. Card accepted: Solid green
+6. Card rejected: Flashing red
+7. Warning state: Yellow flashing
+8. Error state: Red SOS pattern (3 short, 3 long, 3 short)
+9. Configuration mode: White breathing
+
+API ENDPOINTS:
+-----------
+The ESP32 exposes the following HTTP endpoints:
+1. GET /api/status - Get node status
+2. GET /api/config - Get node configuration
+3. POST /api/config - Update node configuration
+4. POST /api/update - Trigger OTA update
+5. GET /api/reboot - Reboot the device
+6. POST /api/factory_reset - Reset to factory settings
+7. GET /api/io_status - Get I/O status (Accessory IO mode)
+8. POST /api/control_io - Control an output (Accessory IO mode)
+9. GET /api/scan - Get last scanned RFID (Office Reader mode)
+
+mDNS DISCOVERY:
+------------
+The node advertises itself using mDNS (Multicast DNS) for automatic discovery:
+  Service type: _rfid-monitor._tcp.local.
+  Service name: {node-id}._rfid-monitor._tcp.local.
+  Properties:
+    - node_id: [unique identifier]
+    - node_type: [machine_monitor/office_reader/accessory_io]
+    - name: [human-readable name]
+    - version: [firmware version]

@@ -1,0 +1,58 @@
+OFFICE RFID READER - WIRING DIAGRAM
+===================================
+
+Connections for a standalone office RFID reader using Arduino Uno or Nano
+
+RFID MODULE (MFRC522):
+---------------------
+SDA (SS)  -> Digital Pin 10
+SCK       -> Digital Pin 13
+MOSI      -> Digital Pin 11
+MISO      -> Digital Pin 12
+IRQ       -> Not connected
+GND       -> GND
+RST       -> Digital Pin 9
+3.3V      -> 3.3V
+
+STATUS LEDs:
+-----------
+RED LED      -> Digital Pin 7 (via 220 ohm resistor)
+GREEN LED    -> Digital Pin 6 (via 220 ohm resistor)
+BLUE LED     -> Digital Pin 5 (via 220 ohm resistor)
+
+ETHERNET MODULE (W5100/W5500):
+-----------------------------
+MOSI      -> Digital Pin 11 (shared with RFID)
+MISO      -> Digital Pin 12 (shared with RFID)
+SCK       -> Digital Pin 13 (shared with RFID)
+SS        -> Digital Pin 4
+RESET     -> Digital Pin 3 (optional)
+VCC       -> 5V
+GND       -> GND
+
+BUZZER:
+------
+Buzzer Signal    -> Digital Pin 8
+GND              -> GND
+
+OPTIONAL LCD DISPLAY (16x2 I2C):
+------------------------------
+SDA       -> A4
+SCL       -> A5
+VCC       -> 5V
+GND       -> GND
+
+POWER SUPPLY:
+-----------
+Arduino Power    -> USB or 9-12V DC power adapter
+
+NOTES:
+- This setup is for the office RFID reader used for card registration
+- The RFID module and Ethernet module share the SPI bus with different SS pins
+- The status LEDs indicate different states: 
+  * Blue = ready to scan
+  * Green = successful scan/registration
+  * Red = error or unregistered card
+- The buzzer provides audio feedback for successful/unsuccessful scans
+- The LCD display (if used) shows instructions and scan results
+- This device connects to the main server to register new RFID cards

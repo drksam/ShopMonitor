@@ -1,0 +1,473 @@
+{% extends 'base.html' %}
+
+{% block title %}Accessory IO Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h3">
+                <i class="fas fa-plug me-2"></i> Accessory IO Management
+            </h1>
+            <p class="text-muted">Manage external devices like fans, lights, and other accessories connected to IO nodes.</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAccessoryModal">
+                <i class="fas fa-plus me-1"></i> Add Accessory
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Configured Accessories</h5>
+                </div>
+                <div class="card-body">
+                    {% if accessories %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Node</th>
+                                    <th>Type</th>
+                                    <th>IO Number</th>
+                                    <th>Linked Machine</th>
+                                    <th>Delays</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for accessory in accessories %}
+                                <tr>
+                                    <td>{{ accessory.name }}</td>
+                                    <td>{{ accessory.node.name }}</td>
+                                    <td>
+                                        <span class="badge rounded-pill bg-{{ 'primary' if accessory.io_type == 'input' else 'success' }}">
+                                            {{ accessory.io_type.capitalize() }}
+                                        </span>
+                                    </td>
+                                    <td>{{ accessory.io_name() }}</td>
+                                    <td>{{ accessory.machine_name() or 'None' }}</td>
+                                    <td>
+                                        <small>
+                                            {% if accessory.activation_delay or accessory.deactivation_delay %}
+                                            {% if accessory.activation_delay %}
+                                            Activate: {{ accessory.activation_delay }}s<br>
+                                            {% endif %}
+                                            {% if accessory.deactivation_delay %}
+                                            Deactivate: {{ accessory.deactivation_delay }}s
+                                            {% endif %}
+                                            {% else %}
+                                            No delay
+                                            {% endif %}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <span class="badge rounded-pill bg-{{ 'success' if accessory.active else 'danger' }}">
+                                            {{ 'Active' if accessory.active else 'Inactive' }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        {% if not accessory.linked_machine_id and accessory.io_type == 'output' %}
+                                        <button class="btn btn-sm {{ 'btn-success' if accessory.active else 'btn-outline-success' }} me-1 toggle-control" 
+                                                data-id="{{ accessory.id }}"
+                                                data-state="{{ '1' if accessory.active else '0' }}">
+                                            <i class="fas {{ 'fa-toggle-on' if accessory.active else 'fa-toggle-off' }}"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button class="btn btn-sm btn-outline-primary me-1" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#editAccessoryModal" 
+                                                data-id="{{ accessory.id }}"
+                                                data-name="{{ accessory.name }}"
+                                                data-description="{{ accessory.description or '' }}"
+                                                data-node-id="{{ accessory.node_id }}"
+                                                data-io-type="{{ accessory.io_type }}"
+                                                data-io-number="{{ accessory.io_number }}"
+                                                data-machine-id="{{ accessory.linked_machine_id or '' }}"
+                                                data-activation-delay="{{ accessory.activation_delay }}"
+                                                data-deactivation-delay="{{ accessory.deactivation_delay }}"
+                                                data-active="{{ accessory.active }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteAccessoryModal"
+                                                data-id="{{ accessory.id }}"
+                                                data-name="{{ accessory.name }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        No accessories configured. Add an accessory to get started.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Accessory Modal -->
+<div class="modal fade" id="addAccessoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Accessory</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('add_accessory') }}" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="add-accessory-name" class="form-label">Accessory Name</label>
+                        <input type="text" class="form-control" id="add-accessory-name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-accessory-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="add-accessory-description" name="description" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-accessory-node" class="form-label">IO Node</label>
+                        <select class="form-select" id="add-accessory-node" name="node_id" required>
+                            <option value="">Select a node...</option>
+                            {% for node in nodes %}
+                            <option value="{{ node.id }}">{{ node.name }} ({{ node.ip_address or 'Not connected' }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="add-accessory-type" class="form-label">IO Type</label>
+                            <select class="form-select" id="add-accessory-type" name="io_type" required>
+                                <option value="input">Input</option>
+                                <option value="output" selected>Output</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="add-accessory-number" class="form-label">IO Number</label>
+                            <select class="form-select" id="add-accessory-number" name="io_number" required>
+                                <option value="0">0</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-accessory-machine" class="form-label">Linked Machine</label>
+                        <select class="form-select" id="add-accessory-machine" name="linked_machine_id">
+                            <option value="">None (Independent control)</option>
+                            {% for machine in machines %}
+                            <option value="{{ machine.id }}">{{ machine.name }} ({{ machine.machine_id }})</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">If linked to a machine, this accessory will activate when the machine is in use.</small>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="add-accessory-activation" class="form-label">Activation Delay (seconds)</label>
+                            <input type="number" class="form-control" id="add-accessory-activation" name="activation_delay" value="0" min="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="add-accessory-deactivation" class="form-label">Deactivation Delay (seconds)</label>
+                            <input type="number" class="form-control" id="add-accessory-deactivation" name="deactivation_delay" value="0" min="0">
+                        </div>
+                        <div class="col-12 mt-2">
+                            <small class="text-muted">Delays control how long to wait before turning the accessory on/off.</small>
+                        </div>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="add-accessory-active" name="active" checked>
+                        <label class="form-check-label" for="add-accessory-active">
+                            Active
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Accessory</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Accessory Modal -->
+<div class="modal fade" id="editAccessoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Accessory</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="edit-accessory-form" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit-accessory-name" class="form-label">Accessory Name</label>
+                        <input type="text" class="form-control" id="edit-accessory-name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-accessory-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="edit-accessory-description" name="description" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-accessory-node" class="form-label">IO Node</label>
+                        <select class="form-select" id="edit-accessory-node" name="node_id" required>
+                            <option value="">Select a node...</option>
+                            {% for node in nodes %}
+                            <option value="{{ node.id }}">{{ node.name }} ({{ node.ip_address or 'Not connected' }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="edit-accessory-type" class="form-label">IO Type</label>
+                            <select class="form-select" id="edit-accessory-type" name="io_type" required>
+                                <option value="input">Input</option>
+                                <option value="output">Output</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit-accessory-number" class="form-label">IO Number</label>
+                            <select class="form-select" id="edit-accessory-number" name="io_number" required>
+                                <option value="0">0</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-accessory-machine" class="form-label">Linked Machine</label>
+                        <select class="form-select" id="edit-accessory-machine" name="linked_machine_id">
+                            <option value="">None (Independent control)</option>
+                            {% for machine in machines %}
+                            <option value="{{ machine.id }}">{{ machine.name }} ({{ machine.machine_id }})</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">If linked to a machine, this accessory will activate when the machine is in use.</small>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="edit-accessory-activation" class="form-label">Activation Delay (seconds)</label>
+                            <input type="number" class="form-control" id="edit-accessory-activation" name="activation_delay" min="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit-accessory-deactivation" class="form-label">Deactivation Delay (seconds)</label>
+                            <input type="number" class="form-control" id="edit-accessory-deactivation" name="deactivation_delay" min="0">
+                        </div>
+                        <div class="col-12 mt-2">
+                            <small class="text-muted">Delays control how long to wait before turning the accessory on/off.</small>
+                        </div>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="edit-accessory-active" name="active">
+                        <label class="form-check-label" for="edit-accessory-active">
+                            Active
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Accessory Modal -->
+<div class="modal fade" id="deleteAccessoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Accessory</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="delete-accessory-name"></strong>?</p>
+                <p class="text-danger">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="delete-accessory-form" method="post">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+    <!-- Toast notifications -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div id="successToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header bg-success text-white">
+                <i class="fas fa-check-circle me-2"></i>
+                <strong class="me-auto">Success</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body" id="toastMessage">
+                Operation completed successfully.
+            </div>
+        </div>
+    </div>
+    
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div id="errorToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header bg-danger text-white">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <strong class="me-auto">Error</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body" id="errorMessage">
+                An error occurred.
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toggle control for independent accessories
+        const toggleButtons = document.querySelectorAll('.toggle-control');
+        toggleButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                const currentState = this.getAttribute('data-state') === '1';
+                const newState = !currentState;
+                
+                // Show loading indicator
+                const icon = this.querySelector('i');
+                const originalClass = icon.className;
+                icon.className = 'fas fa-spinner fa-spin';
+                
+                // Send control command to server
+                fetch(`/accessory/control/${id}/${newState ? '1' : '0'}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update button state
+                        this.setAttribute('data-state', newState ? '1' : '0');
+                        
+                        // Update button appearance
+                        if (newState) {
+                            this.classList.remove('btn-outline-success');
+                            this.classList.add('btn-success');
+                            icon.className = 'fas fa-toggle-on';
+                        } else {
+                            this.classList.remove('btn-success');
+                            this.classList.add('btn-outline-success');
+                            icon.className = 'fas fa-toggle-off';
+                        }
+                        
+                        // Show success toast
+                        const toast = new bootstrap.Toast(document.getElementById('successToast'));
+                        document.getElementById('toastMessage').textContent = data.message;
+                        toast.show();
+                    } else {
+                        // Restore original icon
+                        icon.className = originalClass;
+                        
+                        // Show error toast
+                        const toast = new bootstrap.Toast(document.getElementById('errorToast'));
+                        document.getElementById('errorMessage').textContent = data.message || 'Failed to control accessory';
+                        toast.show();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    
+                    // Restore original icon
+                    icon.className = originalClass;
+                    
+                    // Show error toast
+                    const toast = new bootstrap.Toast(document.getElementById('errorToast'));
+                    document.getElementById('errorMessage').textContent = 'Network error occurred';
+                    toast.show();
+                });
+            });
+        });
+        
+        // Edit accessory modal setup
+        const editAccessoryModal = document.getElementById('editAccessoryModal');
+        if (editAccessoryModal) {
+            editAccessoryModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const id = button.getAttribute('data-id');
+                const name = button.getAttribute('data-name');
+                const description = button.getAttribute('data-description');
+                const nodeId = button.getAttribute('data-node-id');
+                const ioType = button.getAttribute('data-io-type');
+                const ioNumber = button.getAttribute('data-io-number');
+                const machineId = button.getAttribute('data-machine-id');
+                const activationDelay = button.getAttribute('data-activation-delay');
+                const deactivationDelay = button.getAttribute('data-deactivation-delay');
+                const active = button.getAttribute('data-active') === 'True';
+                
+                const form = this.querySelector('#edit-accessory-form');
+                form.action = '/accessory/edit/' + id;
+                
+                this.querySelector('#edit-accessory-name').value = name;
+                this.querySelector('#edit-accessory-description').value = description;
+                this.querySelector('#edit-accessory-node').value = nodeId;
+                this.querySelector('#edit-accessory-type').value = ioType;
+                this.querySelector('#edit-accessory-number').value = ioNumber;
+                this.querySelector('#edit-accessory-machine').value = machineId;
+                this.querySelector('#edit-accessory-activation').value = activationDelay;
+                this.querySelector('#edit-accessory-deactivation').value = deactivationDelay;
+                this.querySelector('#edit-accessory-active').checked = active;
+            });
+        }
+        
+        // Delete accessory modal setup
+        const deleteAccessoryModal = document.getElementById('deleteAccessoryModal');
+        if (deleteAccessoryModal) {
+            deleteAccessoryModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const id = button.getAttribute('data-id');
+                const name = button.getAttribute('data-name');
+                
+                this.querySelector('#delete-accessory-name').textContent = name;
+                this.querySelector('#delete-accessory-form').action = '/accessory/delete/' + id;
+            });
+        }
+        
+        // Validation for IO type and number (ensure unique per node)
+        const addNodeSelect = document.getElementById('add-accessory-node');
+        const addTypeSelect = document.getElementById('add-accessory-type');
+        const addNumberSelect = document.getElementById('add-accessory-number');
+        
+        if (addNodeSelect && addTypeSelect && addNumberSelect) {
+            const validateIO = function() {
+                const nodeId = addNodeSelect.value;
+                const ioType = addTypeSelect.value;
+                const ioNumber = addNumberSelect.value;
+                
+                // TODO: Add AJAX validation to check if this IO is already in use
+                // For now, we'll rely on the server-side validation
+            };
+            
+            addNodeSelect.addEventListener('change', validateIO);
+            addTypeSelect.addEventListener('change', validateIO);
+            addNumberSelect.addEventListener('change', validateIO);
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('nodes') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i> Back to Nodes
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-edit me-2"></i>Edit Node: {{ node.name }}</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('edit_node', node_id=node.id) }}" method="POST">
+            <div class="mb-3">
+                <label for="node_id" class="form-label">Node ID</label>
+                <input type="text" class="form-control" id="node_id" value="{{ node.node_id }}" disabled>
+                <div class="form-text">Node ID cannot be changed after creation.</div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="name" class="form-label">Node Name</label>
+                <input type="text" class="form-control" id="name" name="name" value="{{ node.name }}" required>
+                <div class="form-text">A friendly name for this node.</div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="3">{{ node.description }}</textarea>
+                <div class="form-text">Optional description of this node and its purpose.</div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="ip_address" class="form-label">IP Address</label>
+                <input type="text" class="form-control" id="ip_address" name="ip_address" value="{{ node.ip_address }}">
+                <div class="form-text">Current IP address of the node. This may change if not using a static IP.</div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="node_type" class="form-label">Node Type</label>
+                <select class="form-select" id="node_type" name="node_type" required>
+                    <option value="machine_monitor" {% if node.node_type == 'machine_monitor' %}selected{% endif %}>Machine Monitor</option>
+                    <option value="office_reader" {% if node.node_type == 'office_reader' %}selected{% endif %}>Office RFID Reader</option>
+                    <option value="accessory_io" {% if node.node_type == 'accessory_io' %}selected{% endif %}>Accessory IO Controller</option>
+                </select>
+            </div>
+            
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i> Update Node
+                </button>
+                <a href="{{ url_for('nodes') }}" class="btn btn-outline-secondary">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if node.node_type == 'machine_monitor' %}
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-server me-2"></i>Attached Machines</h5>
+    </div>
+    <div class="card-body">
+        {% if node.machines.count() > 0 %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Machine ID</th>
+                            <th>Name</th>
+                            <th>Zone</th>
+                            <th>Port</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for machine in node.machines %}
+                        <tr>
+                            <td>{{ machine.machine_id }}</td>
+                            <td>{{ machine.name }}</td>
+                            <td>{{ machine.zone.name if machine.zone else 'Unassigned' }}</td>
+                            <td>{{ machine.node_port }}</td>
+                            <td>
+                                <a href="{{ url_for('edit_machine', machine_id=machine.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-1"></i> No machines are currently attached to this node.
+            </div>
+        {% endif %}
+        
+        <div class="mt-3">
+            <a href="{{ url_for('machines') }}" class="btn btn-success">
+                <i class="fas fa-plus me-1"></i> Add Machine
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if node.node_type == 'accessory_io' %}
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-plug me-2"></i>Accessory IO Configuration</h5>
+    </div>
+    <div class="card-body">
+        {% if node.accessories.count() > 0 %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>IO Number</th>
+                            <th>Linked Machine</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for accessory in node.accessories %}
+                        <tr>
+                            <td>{{ accessory.name }}</td>
+                            <td>{{ accessory.io_type|title }}</td>
+                            <td>{{ accessory.io_number }}</td>
+                            <td>{{ accessory.linked_machine.name if accessory.linked_machine else 'None' }}</td>
+                            <td>
+                                <a href="{{ url_for('edit_accessory', accessory_id=accessory.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-1"></i> No accessories are configured for this node.
+            </div>
+        {% endif %}
+        
+        <div class="mt-3">
+            <a href="{{ url_for('add_accessory') }}?node_id={{ node.id }}" class="btn btn-success">
+                <i class="fas fa-plus me-1"></i> Add Accessory
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

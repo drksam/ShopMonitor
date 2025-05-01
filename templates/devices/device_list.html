@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+    .status-badge {
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .status-online {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .status-offline {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    .status-unreachable {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    .device-card {
+        transition: transform 0.2s ease;
+        margin-bottom: 20px;
+    }
+    .device-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+    .card-header {
+        border-bottom: none;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+    .empty-state i {
+        font-size: 60px;
+        color: #ddd;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-wifi me-2"></i>ESP32 Machine Monitors</h1>
+    <div>
+        <button class="btn btn-outline-primary" id="refreshDevices">
+            <i class="fas fa-sync-alt me-1"></i> Refresh
+        </button>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Device Discovery</h5>
+            </div>
+            <div class="card-body">
+                <p>This page shows ESP32 Machine Monitor devices discovered on your network. The system automatically searches for devices using mDNS (multicast DNS).</p>
+                <p>Devices should advertise themselves with the service type <code>_rfid-monitor._tcp</code>. If your devices are not appearing, please check:</p>
+                <ul>
+                    <li>Devices are powered on and connected to the same network</li>
+                    <li>mDNS is not blocked by network firewall settings</li>
+                    <li>Devices are running firmware with correctly configured mDNS service advertising</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if devices %}
+<div class="row mb-4">
+    <div class="col-12 mb-3">
+        <h4><i class="fas fa-broadcast-tower me-2"></i>Discovered Devices ({{ devices|length }})</h4>
+    </div>
+
+    {% for device in devices %}
+    <div class="col-md-4">
+        <div class="card device-card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{{ device.name }}</h5>
+                <span class="status-badge status-{{ device.status }}">{{ device.status|title }}</span>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="text-muted mb-1">Location</div>
+                    <div>{{ device.location }}</div>
+                </div>
+                <div class="mb-3">
+                    <div class="text-muted mb-1">IP Address</div>
+                    <div>{{ device.ip }}</div>
+                </div>
+                <div class="mb-3">
+                    <div class="text-muted mb-1">Machine IDs</div>
+                    <div>
+                        {% for machine_id in device.machines %}
+                        <span class="badge bg-secondary me-1">{{ machine_id }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="text-muted mb-1">Last Seen</div>
+                    <div>{{ device.last_seen.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('device_detail', device_id=device.id) }}" class="btn btn-primary">
+                        <i class="fas fa-info-circle me-1"></i> View Details
+                    </a>
+                    {% if device.status == 'online' %}
+                    <a href="http://{{ device.ip }}" target="_blank" class="btn btn-outline-secondary">
+                        <i class="fas fa-external-link-alt me-1"></i> Web Interface
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body empty-state">
+        <i class="fas fa-wifi"></i>
+        <h3>No Devices Found</h3>
+        <p class="text-muted">We couldn't find any ESP32 RFID Machine Monitor devices on your network.</p>
+        <p>Make sure your devices are powered on and connected to the same network.</p>
+        <button class="btn btn-primary" id="manualRefresh">
+            <i class="fas fa-sync-alt me-1"></i> Refresh Device List
+        </button>
+    </div>
+</div>
+{% endif %}
+
+{% if devices %}
+<div class="card mb-4">
+    <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>Device Integration Guide</h5>
+    </div>
+    <div class="card-body">
+        <h5>Adding a New ESP32 Machine Monitor</h5>
+        <ol>
+            <li>Flash the ESP32 with RFID Machine Monitor firmware</li>
+            <li>Connect the device to your network via WiFi</li>
+            <li>The device will automatically advertise itself on the network</li>
+            <li>It should appear in the list above within 30-60 seconds</li>
+            <li>Click "View Details" to configure the device and assign machine IDs</li>
+        </ol>
+        
+        <h5 class="mt-4">Troubleshooting</h5>
+        <ul>
+            <li>If a device is shown as "unreachable," check its power and network connection</li>
+            <li>Use the web interface for detailed device configuration</li>
+            <li>For firmware updates, use the device detail page or the device's web interface</li>
+        </ul>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Refresh device list button
+        document.getElementById('refreshDevices')?.addEventListener('click', function() {
+            location.reload();
+        });
+        
+        // Manual refresh for empty state
+        document.getElementById('manualRefresh')?.addEventListener('click', function() {
+            location.reload();
+        });
+        
+        // Auto-refresh the page every 30 seconds
+        setTimeout(function() {
+            location.reload();
+        }, 30000);
+    });
+</script>
+{% endblock %}

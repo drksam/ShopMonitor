@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+    .node-card {
+        transition: transform 0.2s ease;
+        margin-bottom: 20px;
+        height: 100%;
+    }
+    .node-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+    .node-info {
+        margin-bottom: 10px;
+    }
+    .node-info .title {
+        font-size: 0.875rem;
+        color: #6c757d;
+        margin-bottom: 0;
+    }
+    .node-info .value {
+        font-weight: 500;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+    .empty-state i {
+        font-size: 60px;
+        color: #ddd;
+        margin-bottom: 20px;
+    }
+    .node-type-badge {
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .node-type-machine_monitor {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+    .node-type-office_reader {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .node-type-accessory_io {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-microchip me-2"></i>ESP32 Nodes</h1>
+    <div>
+        <a href="{{ url_for('devices_list') }}" class="btn btn-outline-primary me-2">
+            <i class="fas fa-wifi me-1"></i> Discover Devices
+        </a>
+        <a href="{{ url_for('add_node') }}" class="btn btn-success">
+            <i class="fas fa-plus me-1"></i> Add Node
+        </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Node Management</h5>
+            </div>
+            <div class="card-body">
+                <p>This page shows all ESP32 and Raspberry Pi nodes registered in the system. Nodes are hardware controllers that manage machine access with RFID readers.</p>
+                <p>Node types:</p>
+                <ul>
+                    <li><strong>Machine Monitor:</strong> Controls access to machines via RFID readers (1-4 machines per node)</li>
+                    <li><strong>Office Reader:</strong> RFID registration point for office/administration</li>
+                    <li><strong>Accessory IO:</strong> Controls auxiliary equipment (lights, fans, etc.) related to machines</li>
+                </ul>
+                <p>Use the "Discover Devices" button to find new ESP32 nodes on your network.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if nodes %}
+<div class="row">
+    {% for node in nodes %}
+    <div class="col-md-4 mb-4">
+        <div class="card node-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{{ node.name }}</h5>
+                <span class="node-type-badge node-type-{{ node.node_type }}">
+                    {% if node.node_type == 'machine_monitor' %}
+                        Machine Monitor
+                    {% elif node.node_type == 'office_reader' %}
+                        Office Reader
+                    {% elif node.node_type == 'accessory_io' %}
+                        Accessory IO
+                    {% else %}
+                        {{ node.node_type|title }}
+                    {% endif %}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="node-info">
+                    <p class="title">Node ID</p>
+                    <p class="value">{{ node.node_id }}</p>
+                </div>
+                <div class="node-info">
+                    <p class="title">IP Address</p>
+                    <p class="value">{{ node.ip_address or 'Unknown' }}</p>
+                </div>
+                {% if node.node_type == 'machine_monitor' %}
+                <div class="node-info">
+                    <p class="title">Connected Machines</p>
+                    <p class="value">{{ node.machine_count() }}</p>
+                </div>
+                {% endif %}
+                <div class="node-info">
+                    <p class="title">Last Seen</p>
+                    <p class="value">
+                        {% if node.last_seen %}
+                            {{ node.last_seen.strftime('%Y-%m-%d %H:%M:%S') }}
+                        {% else %}
+                            Never
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="node-info">
+                    <p class="title">Status</p>
+                    <p class="value">
+                        {% if node.status() == 'online' %}
+                            <span class="text-success"><i class="fas fa-check-circle me-1"></i> Online</span>
+                        {% else %}
+                            <span class="text-danger"><i class="fas fa-times-circle me-1"></i> Offline</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('edit_node', node_id=node.id) }}" class="btn btn-primary">
+                        <i class="fas fa-edit me-1"></i> Edit
+                    </a>
+                    {% if node.ip_address %}
+                    <a href="http://{{ node.ip_address }}" target="_blank" class="btn btn-outline-secondary">
+                        <i class="fas fa-external-link-alt me-1"></i> Web UI
+                    </a>
+                    {% endif %}
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ node.id }}">
+                        <i class="fas fa-trash me-1"></i> Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Delete Modal -->
+    <div class="modal fade" id="deleteModal{{ node.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete node <strong>{{ node.name }}</strong>?
+                    {% if node.machine_count() > 0 %}
+                    <div class="alert alert-warning mt-3">
+                        <i class="fas fa-exclamation-triangle me-1"></i> This node has {{ node.machine_count() }} connected machines. You must reassign or remove these machines before deleting the node.
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form action="{{ url_for('delete_node', node_id=node.id) }}" method="POST">
+                        <button type="submit" class="btn btn-danger" {% if node.machine_count() > 0 %}disabled{% endif %}>
+                            Delete Node
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body empty-state">
+        <i class="fas fa-microchip"></i>
+        <h3>No Nodes Found</h3>
+        <p class="text-muted">You haven't added any nodes to your system yet.</p>
+        <div class="mt-3">
+            <a href="{{ url_for('devices_list') }}" class="btn btn-primary me-2">
+                <i class="fas fa-wifi me-1"></i> Discover Devices
+            </a>
+            <a href="{{ url_for('add_node') }}" class="btn btn-success">
+                <i class="fas fa-plus me-1"></i> Add Node Manually
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,868 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+    .api-endpoint {
+        margin-bottom: 2rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+    }
+    .api-endpoint .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .method-badge {
+        font-size: 0.8rem;
+        font-weight: bold;
+        padding: 0.35rem 0.5rem;
+        border-radius: 0.25rem;
+        margin-right: 0.5rem;
+    }
+    .get {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+    .post {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .put {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    .delete {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    .code-block {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        overflow-x: auto;
+        font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.9rem;
+    }
+    .param-table {
+        width: 100%;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+    }
+    .param-table th {
+        background-color: #f8f9fa;
+    }
+    .param-required {
+        font-size: 0.75rem;
+        padding: 0.15rem 0.5rem;
+        border-radius: 0.5rem;
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    .param-optional {
+        font-size: 0.75rem;
+        padding: 0.15rem 0.5rem;
+        border-radius: 0.5rem;
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+    .api-section {
+        margin-bottom: 3rem;
+    }
+    .integration-flow {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-exchange-alt me-2"></i>NooyenUSATracker API Integration</h1>
+    <div>
+        <a href="{{ url_for('integration.integration_status') }}" class="btn btn-outline-primary" id="apiCheck" target="_blank">
+            <i class="fas fa-sync-alt me-1"></i> Check API Status
+        </a>
+        <a href="{{ url_for('integration_web.config_page') }}" class="btn btn-primary">
+            <i class="fas fa-cog me-1"></i> Configure Integration
+        </a>
+    </div>
+</div>
+
+<ul class="nav nav-tabs mb-4" id="integrationTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">Overview</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="api-endpoints-tab" data-bs-toggle="tab" data-bs-target="#api-endpoints" type="button" role="tab" aria-controls="api-endpoints" aria-selected="false">API Endpoints</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="data-structures-tab" data-bs-toggle="tab" data-bs-target="#data-structures" type="button" role="tab" aria-controls="data-structures" aria-selected="false">Data Structures</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="authentication-tab" data-bs-toggle="tab" data-bs-target="#authentication" type="button" role="tab" aria-controls="authentication" aria-selected="false">Authentication</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="sync-flow-tab" data-bs-toggle="tab" data-bs-target="#sync-flow" type="button" role="tab" aria-controls="sync-flow" aria-selected="false">Sync Workflow</button>
+    </li>
+</ul>
+
+<div class="tab-content" id="integrationTabsContent">
+    <!-- Overview Tab -->
+    <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Integration Overview</h5>
+            </div>
+            <div class="card-body">
+                <p>This integration allows bidirectional communication between the RFID Machine Monitor system and NooyenUSATracker application. It supports:</p>
+                <ul>
+                    <li><strong>User Synchronization:</strong> Keep user data synchronized between systems</li>
+                    <li><strong>Machine Status Reporting:</strong> Share real-time machine status and activity</li>
+                    <li><strong>Access Control:</strong> Verify user access permissions across systems</li>
+                    <li><strong>Alert Management:</strong> Share alerts and notifications between systems</li>
+                </ul>
+                
+                <h5 class="mt-4">Configuration Requirements</h5>
+                <p>To enable this integration, you need:</p>
+                <ol>
+                    <li>A valid NooyenUSATracker API key</li>
+                    <li>The base URL for the NooyenUSATracker API</li>
+                    <li>Network connectivity between the two systems</li>
+                </ol>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-1"></i> Settings can be configured on the <a href="{{ url_for('integration_web.config_page') }}">Integration Configuration</a> page.
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>Data Flow Diagram</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="integration-flow">
+                        <div class="row">
+                            <div class="col-md-5">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <h5>RFID Machine Monitor</h5>
+                                        <p class="text-muted">Local Access Control System</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-center justify-content-center">
+                                <div>
+                                    <i class="fas fa-arrows-alt-h fa-2x text-primary"></i>
+                                    <div class="mt-2 text-center">
+                                        <small>API Calls</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <h5>NooyenUSATracker</h5>
+                                        <p class="text-muted">Central Management System</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <h6 class="text-center mb-3">Data Exchange Types</h6>
+                                <div class="d-flex justify-content-around flex-wrap">
+                                    <div class="badge bg-primary mb-2 p-2">Users</div>
+                                    <div class="badge bg-success mb-2 p-2">Machines</div>
+                                    <div class="badge bg-info mb-2 p-2">Locations</div>
+                                    <div class="badge bg-warning mb-2 p-2">Access Logs</div>
+                                    <div class="badge bg-danger mb-2 p-2">Alerts</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- API Endpoints Tab -->
+    <div class="tab-pane fade" id="api-endpoints" role="tabpanel" aria-labelledby="api-endpoints-tab">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>API Endpoints Reference</h3>
+            <div>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary btn-sm filter-btn active" data-filter="all">All</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm filter-btn" data-filter="inbound">Inbound</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm filter-btn" data-filter="outbound">Outbound</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Inbound Endpoints (Our Server Receives) -->
+        <div class="api-section" id="inbound-endpoints">
+            <h4 class="mb-3"><i class="fas fa-download me-2"></i>Inbound Endpoints (Our API Provides)</h4>
+            
+            <div class="api-endpoint">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="method-badge post">POST</span>
+                        <strong>/integration/api/auth</strong>
+                    </div>
+                    <span class="badge bg-primary">Inbound</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>Description:</strong> Authenticates RFID card access for a specific machine.</p>
+                    <p><strong>Usage:</strong> Called by NooyenUSATracker to verify if a user has access to a machine.</p>
+                    
+                    <h6>Request Body:</h6>
+                    <div class="code-block">
+{
+  "card_id": "0123456789",
+  "machine_id": "W1"
+}
+                    </div>
+                    
+                    <h6>Response:</h6>
+                    <div class="code-block">
+{
+  "success": true,
+  "user": {
+    "id": 1,
+    "username": "0123456789",
+    "fullName": "John Doe",
+    "role": "operator"
+  },
+  "access_level": "operator",
+  "machine_id": "W1",
+  "timestamp": "2025-04-18T12:30:45Z"
+}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="api-endpoint">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="method-badge get">GET</span>
+                        <strong>/integration/api/node_status</strong>
+                    </div>
+                    <span class="badge bg-primary">Inbound</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>Description:</strong> Provides status information about all nodes and their connected machines.</p>
+                    <p><strong>Usage:</strong> Called by NooyenUSATracker during sync to get current machine statuses.</p>
+                    
+                    <h6>Response:</h6>
+                    <div class="code-block">
+{
+  "timestamp": "2025-04-18T12:30:45Z",
+  "nodes": [
+    {
+      "id": 1,
+      "node_id": "esp32_001",
+      "name": "Shop Floor Node 1",
+      "ip_address": "192.168.1.100",
+      "node_type": "machine_monitor",
+      "status": "online",
+      "last_seen": "2025-04-18T12:25:45Z",
+      "machines": [
+        {
+          "id": 1,
+          "machine_id": "W1",
+          "name": "Welding Machine 1",
+          "status": "active",
+          "zone": "Shop Floor",
+          "current_user": {
+            "id": 1,
+            "name": "John Doe",
+            "rfid_tag": "0123456789"
+          },
+          "today_access_count": 5,
+          "activity_count": 42,
+          "last_activity": "2025-04-18T12:30:45Z"
+        }
+      ]
+    }
+  ]
+}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="api-endpoint">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="method-badge post">POST</span>
+                        <strong>/integration/api/alerts</strong>
+                    </div>
+                    <span class="badge bg-primary">Inbound</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>Description:</strong> Receives alerts from NooyenUSATracker.</p>
+                    <p><strong>Usage:</strong> Called by NooyenUSATracker to send alerts for display/action in our system.</p>
+                    
+                    <h6>Request Body:</h6>
+                    <div class="code-block">
+{
+  "id": 1,
+  "machineId": "W1",
+  "senderId": 1,
+  "message": "Machine requires maintenance",
+  "alertType": "warning",
+  "status": "pending",
+  "origin": "machine",
+  "createdAt": "2025-04-18T12:30:45Z"
+}
+                    </div>
+                    
+                    <h6>Response:</h6>
+                    <div class="code-block">
+{
+  "success": true,
+  "message": "Alert received and stored",
+  "local_alert_id": 1,
+  "external_alert_id": 1,
+  "timestamp": "2025-04-18T12:31:45Z",
+  "machine_name": "Welding Machine 1"
+}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="api-endpoint">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="method-badge post">POST</span>
+                        <strong>/integration/api/alerts/:id/acknowledge</strong>
+                    </div>
+                    <span class="badge bg-primary">Inbound</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>Description:</strong> Acknowledges an alert in our system.</p>
+                    <p><strong>Usage:</strong> Called by NooyenUSATracker when an alert is acknowledged there.</p>
+                    
+                    <h6>Response:</h6>
+                    <div class="code-block">
+{
+  "success": true,
+  "message": "Alert 1 acknowledged",
+  "alert": {
+    "id": 1,
+    "external_id": 1,
+    "machine_id": "W1",
+    "machine_name": "Welding Machine 1",
+    "message": "Machine requires maintenance",
+    "alert_type": "warning",
+    "status": "acknowledged",
+    "origin": "nooyen_tracker",
+    "created_at": "2025-04-18T12:30:45Z",
+    "acknowledged_at": "2025-04-18T12:45:22Z",
+    "resolved_at": null
+  },
+  "timestamp": "2025-04-18T12:45:22Z"
+}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="api-endpoint">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="method-badge post">POST</span>
+                        <strong>/integration/api/alerts/:id/resolve</strong>
+                    </div>
+                    <span class="badge bg-primary">Inbound</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>Description:</strong> Resolves an alert in our system.</p>
+                    <p><strong>Usage:</strong> Called by NooyenUSATracker when an alert is resolved there.</p>
+                    
+                    <h6>Response:</h6>
+                    <div class="code-block">
+{
+  "success": true,
+  "message": "Alert 1 resolved",
+  "alert": {
+    "id": 1,
+    "external_id": 1,
+    "machine_id": "W1",
+    "machine_name": "Welding Machine 1",
+    "message": "Machine requires maintenance",
+    "alert_type": "warning",
+    "status": "resolved",
+    "origin": "nooyen_tracker",
+    "created_at": "2025-04-18T12:30:45Z",
+    "acknowledged_at": "2025-04-18T12:45:22Z",
+    "resolved_at": "2025-04-18T13:15:30Z"
+  },
+  "timestamp": "2025-04-18T13:15:30Z"
+}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Outbound Endpoints (We Call NooyenUSATracker API) -->
+        <div class="api-section" id="outbound-endpoints">
+            <h4 class="mb-3"><i class="fas fa-upload me-2"></i>Outbound Endpoints (We Call External API)</h4>
+            
+            <div class="api-endpoint">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="method-badge post">POST</span>
+                        <strong>{api_base_url}/api/sync/users</strong>
+                    </div>
+                    <span class="badge bg-secondary">Outbound</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>Description:</strong> Pushes user data to NooyenUSATracker.</p>
+                    <p><strong>Usage:</strong> Called when users are added, updated, or during sync.</p>
+                    
+                    <h6>Request Body:</h6>
+                    <div class="code-block">
+{
+  "users": [
+    {
+      "id": 1,
+      "rfid_tag": "0123456789",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "active": true,
+      "is_admin_override": false
+    }
+  ]
+}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="api-endpoint">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="method-badge post">POST</span>
+                        <strong>{api_base_url}/api/sync/locations</strong>
+                    </div>
+                    <span class="badge bg-secondary">Outbound</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>Description:</strong> Pushes location (zone) data to NooyenUSATracker.</p>
+                    <p><strong>Usage:</strong> Called when zones are added, updated, or during sync.</p>
+                    
+                    <h6>Request Body:</h6>
+                    <div class="code-block">
+{
+  "locations": [
+    {
+      "id": 1,
+      "name": "Shop Floor",
+      "description": "Main manufacturing area"
+    }
+  ]
+}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="api-endpoint">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="method-badge post">POST</span>
+                        <strong>{api_base_url}/api/sync/machines</strong>
+                    </div>
+                    <span class="badge bg-secondary">Outbound</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>Description:</strong> Pushes machine configuration to NooyenUSATracker.</p>
+                    <p><strong>Usage:</strong> Called when machines are added, updated, or during sync.</p>
+                    
+                    <h6>Request Body:</h6>
+                    <div class="code-block">
+{
+  "machines": [
+    {
+      "id": 1,
+      "machine_id": "W1",
+      "name": "Welding Machine 1",
+      "description": "Primary welding station",
+      "zone_id": 1,
+      "status": "idle"
+    }
+  ]
+}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="api-endpoint">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="method-badge get">GET</span>
+                        <strong>{api_base_url}/api/sync/accesslogs</strong>
+                    </div>
+                    <span class="badge bg-secondary">Outbound</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>Description:</strong> Gets access logs from NooyenUSATracker.</p>
+                    <p><strong>Usage:</strong> Called during sync to retrieve any access events recorded in NooyenUSATracker.</p>
+                    
+                    <h6>Query Parameters:</h6>
+                    <table class="table param-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>since</td>
+                                <td>ISO Date</td>
+                                <td>Only fetch logs newer than this timestamp</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="api-endpoint">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="method-badge get">GET</span>
+                        <strong>{api_base_url}/api/sync/alerts</strong>
+                    </div>
+                    <span class="badge bg-secondary">Outbound</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>Description:</strong> Gets pending alerts from NooyenUSATracker.</p>
+                    <p><strong>Usage:</strong> Called during sync to retrieve new alerts from NooyenUSATracker.</p>
+                    
+                    <h6>Query Parameters:</h6>
+                    <table class="table param-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Type</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>status</td>
+                                <td>String</td>
+                                <td>Filter by alert status (e.g., "pending")</td>
+                            </tr>
+                            <tr>
+                                <td>since</td>
+                                <td>ISO Date</td>
+                                <td>Only fetch alerts newer than this timestamp</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="api-endpoint">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="method-badge post">POST</span>
+                        <strong>{api_base_url}/api/alerts</strong>
+                    </div>
+                    <span class="badge bg-secondary">Outbound</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>Description:</strong> Sends an alert to NooyenUSATracker.</p>
+                    <p><strong>Usage:</strong> Called when an alert is generated in our system and needs to be sent to NooyenUSATracker.</p>
+                    
+                    <h6>Request Body:</h6>
+                    <div class="code-block">
+{
+  "machineId": "W1",
+  "message": "RFID reader error detected",
+  "alertType": "error",
+  "origin": "rfid_system"
+}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="api-endpoint">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="method-badge post">POST</span>
+                        <strong>{api_base_url}/api/alerts/:id/acknowledge</strong>
+                    </div>
+                    <span class="badge bg-secondary">Outbound</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>Description:</strong> Acknowledges an alert in NooyenUSATracker.</p>
+                    <p><strong>Usage:</strong> Called when an alert is acknowledged in our system and needs to be updated in NooyenUSATracker.</p>
+                </div>
+            </div>
+            
+            <div class="api-endpoint">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="method-badge post">POST</span>
+                        <strong>{api_base_url}/api/alerts/:id/resolve</strong>
+                    </div>
+                    <span class="badge bg-secondary">Outbound</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>Description:</strong> Resolves an alert in NooyenUSATracker.</p>
+                    <p><strong>Usage:</strong> Called when an alert is resolved in our system and needs to be updated in NooyenUSATracker.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Data Structures Tab -->
+    <div class="tab-pane fade" id="data-structures" role="tabpanel" aria-labelledby="data-structures-tab">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-database me-2"></i>Data Structures Reference</h5>
+            </div>
+            <div class="card-body">
+                <h4 class="mb-3">User</h4>
+                <div class="code-block">
+{
+  "id": 1,
+  "rfid_tag": "0123456789",
+  "name": "John Doe",
+  "email": "john@example.com",
+  "active": true,
+  "is_offline_access": false,
+  "is_admin_override": false
+}
+                </div>
+                
+                <h4 class="mt-4 mb-3">Machine</h4>
+                <div class="code-block">
+{
+  "id": 1,
+  "machine_id": "W1",
+  "name": "Welding Machine 1",
+  "description": "Primary welding station",
+  "zone_id": 1,
+  "zone_name": "Shop Floor",
+  "status": "idle",
+  "current_user_id": null,
+  "node_id": 1,
+  "node_port": 0
+}
+                </div>
+                
+                <h4 class="mt-4 mb-3">Zone/Location</h4>
+                <div class="code-block">
+{
+  "id": 1,
+  "name": "Shop Floor",
+  "description": "Main manufacturing area"
+}
+                </div>
+                
+                <h4 class="mt-4 mb-3">Node</h4>
+                <div class="code-block">
+{
+  "id": 1,
+  "node_id": "esp32_001",
+  "name": "Shop Floor Node 1",
+  "description": "Primary ESP32 node for shop floor",
+  "ip_address": "192.168.1.100",
+  "node_type": "machine_monitor",
+  "is_esp32": true,
+  "last_seen": "2025-04-18T12:25:45Z",
+  "firmware_version": "v1.2.0",
+  "status": "online"
+}
+                </div>
+                
+                <h4 class="mt-4 mb-3">Machine Log</h4>
+                <div class="code-block">
+{
+  "id": 1,
+  "machine_id": 1,
+  "user_id": 1,
+  "login_time": "2025-04-18T09:30:45Z",
+  "logout_time": "2025-04-18T10:45:22Z",
+  "total_time": 4477,
+  "status": "completed"
+}
+                </div>
+                
+                <h4 class="mt-4 mb-3">Alert</h4>
+                <div class="code-block">
+{
+  "id": 1,
+  "external_id": 42,
+  "machine_id": 1,
+  "machine_name": "Welding Machine 1",
+  "node_id": 1,
+  "node_name": "Shop Floor Node 1",
+  "user_id": 1,
+  "user_name": "John Doe",
+  "message": "Machine requires maintenance",
+  "alert_type": "warning",
+  "status": "pending",
+  "origin": "machine",
+  "created_at": "2025-04-18T12:30:45Z",
+  "acknowledged_at": null,
+  "resolved_at": null
+}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Authentication Tab -->
+    <div class="tab-pane fade" id="authentication" role="tabpanel" aria-labelledby="authentication-tab">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-lock me-2"></i>Authentication</h5>
+            </div>
+            <div class="card-body">
+                <p>All API requests between NooyenUSATracker and this system require authentication using an API key.</p>
+                
+                <h5 class="mt-4">Using API Keys</h5>
+                <p>The API key should be included in the <code>X-API-Key</code> header for all requests.</p>
+                
+                <div class="code-block">
+// Example API request with authentication
+fetch('https://your-server.example.com/integration/api/auth', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': 'your-api-key'
+  },
+  body: JSON.stringify({
+    card_id: '0123456789',
+    machine_id: 'W1'
+  })
+})
+                </div>
+                
+                <h5 class="mt-4">Response Codes</h5>
+                <ul>
+                    <li><strong>200 OK:</strong> Request successful</li>
+                    <li><strong>400 Bad Request:</strong> Invalid or missing required parameters</li>
+                    <li><strong>401 Unauthorized:</strong> Missing or invalid API key</li>
+                    <li><strong>403 Forbidden:</strong> Valid credentials but insufficient permissions</li>
+                    <li><strong>404 Not Found:</strong> Requested resource not found</li>
+                    <li><strong>500 Server Error:</strong> Error on the server</li>
+                </ul>
+                
+                <div class="alert alert-warning mt-4">
+                    <i class="fas fa-exclamation-triangle me-1"></i> Never share your API key and ensure it's stored securely in your environment variables or configuration.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sync Workflow Tab -->
+    <div class="tab-pane fade" id="sync-flow" role="tabpanel" aria-labelledby="sync-flow-tab">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-sync me-2"></i>Synchronization Workflow</h5>
+            </div>
+            <div class="card-body">
+                <p>The synchronization process follows a specific sequence to ensure data consistency between systems.</p>
+                
+                <div class="mt-4">
+                    <h5>Synchronization Steps</h5>
+                    <ol>
+                        <li class="mb-3">
+                            <strong>Push User Data to NooyenUSATracker</strong>
+                            <p class="text-muted">Send all user information including RFID tags, names, and access levels.</p>
+                        </li>
+                        <li class="mb-3">
+                            <strong>Push Location Data to NooyenUSATracker</strong>
+                            <p class="text-muted">Send all zone/location information.</p>
+                        </li>
+                        <li class="mb-3">
+                            <strong>Push Machine Data to NooyenUSATracker</strong>
+                            <p class="text-muted">Send all machine configurations including connected nodes, ports, and zone assignments.</p>
+                        </li>
+                        <li class="mb-3">
+                            <strong>Get Node Status</strong>
+                            <p class="text-muted">Gather detailed status information for all nodes and machines.</p>
+                        </li>
+                        <li class="mb-3">
+                            <strong>Pull Access Logs from NooyenUSATracker</strong>
+                            <p class="text-muted">Retrieve access events that may have been recorded in the main system.</p>
+                        </li>
+                        <li class="mb-3">
+                            <strong>Pull Pending Alerts from NooyenUSATracker</strong>
+                            <p class="text-muted">Retrieve any new alerts or notifications from the main system.</p>
+                        </li>
+                        <li class="mb-3">
+                            <strong>Update Sync Timestamp</strong>
+                            <p class="text-muted">Record the completion time of the synchronization for tracking purposes.</p>
+                        </li>
+                    </ol>
+                </div>
+                
+                <div class="alert alert-info mt-4">
+                    <i class="fas fa-info-circle me-1"></i> Synchronization occurs automatically at the interval specified in your configuration. You can also trigger a manual sync from the <a href="{{ url_for('integration_web.config_page') }}">Integration Configuration</a> page.
+                </div>
+                
+                <h5 class="mt-4">Sync Frequency Considerations</h5>
+                <p>Considerations for setting sync frequency:</p>
+                <ul>
+                    <li><strong>Too Frequent:</strong> High server load, network traffic, potential API rate limiting</li>
+                    <li><strong>Too Infrequent:</strong> Data consistency issues, delayed alerts, outdated machine statuses</li>
+                    <li><strong>Recommended:</strong> 15-30 minutes for most installations, 5-10 minutes for high-traffic environments</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // API Endpoint filtering
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const inboundSection = document.getElementById('inbound-endpoints');
+        const outboundSection = document.getElementById('outbound-endpoints');
+        
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove active class from all buttons
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                // Add active class to clicked button
+                this.classList.add('active');
+                
+                const filter = this.getAttribute('data-filter');
+                
+                if (filter === 'all') {
+                    inboundSection.style.display = 'block';
+                    outboundSection.style.display = 'block';
+                } else if (filter === 'inbound') {
+                    inboundSection.style.display = 'block';
+                    outboundSection.style.display = 'none';
+                } else if (filter === 'outbound') {
+                    inboundSection.style.display = 'none';
+                    outboundSection.style.display = 'block';
+                }
+            });
+        });
+        
+        // Ensure tab is shown when directly linked
+        const url = new URL(window.location.href);
+        const hash = url.hash;
+        if (hash) {
+            const tab = document.querySelector(`button[data-bs-target="${hash}"]`);
+            if (tab) {
+                tab.click();
+            }
+        }
+    });
+</script>
+{% endblock %}

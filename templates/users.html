@@ -1,0 +1,549 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1><i class="fas fa-users me-2"></i>User Management</h1>
+    </div>
+</div>
+
+<!-- RFID Users Section -->
+<div class="row mb-5">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">RFID Users</h5>
+                <div>
+                    {% if session.get('pending_rfid') %}
+                    <a href="{{ url_for('complete_rfid_registration') }}" class="btn btn-warning btn-sm me-2">
+                        <i class="fas fa-id-card me-1"></i> Complete Pending Registration
+                    </a>
+                    {% endif %}
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addRfidUserModal">
+                        <i class="fas fa-plus me-1"></i> Add RFID User
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if rfid_users %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>RFID Tag</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th>Authorized Machines</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in rfid_users %}
+                            <tr>
+                                <td><code>{{ user.rfid_tag }}</code></td>
+                                <td>{{ user.name }}</td>
+                                <td>{{ user.email or '-' }}</td>
+                                <td>
+                                    <span class="badge {% if user.active %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ 'Active' if user.active else 'Inactive' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="me-2">{{ user.authorized_machines.count() }} machines</span>
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-outline-primary btn-sm machine-auth-btn"
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#machineAuthorizationsModal"
+                                                    data-user-id="{{ user.id }}"
+                                                    data-user-name="{{ user.name }}"
+                                                    title="Local Permissions">
+                                                <i class="fas fa-key"></i>
+                                            </button>
+                                            {% if user.external_id %}
+                                            <a href="{{ url_for('integration_web.manage_user_permissions', user_id=user.id) }}" 
+                                               class="btn btn-outline-info btn-sm"
+                                               title="Manage NooyenUSATracker Permissions">
+                                                <i class="fas fa-sync-alt"></i>
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary me-1" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#editRfidUserModal" 
+                                            data-id="{{ user.id }}"
+                                            data-name="{{ user.name }}"
+                                            data-email="{{ user.email or '' }}"
+                                            data-active="{{ user.active|int }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteRfidUserModal"
+                                            data-id="{{ user.id }}"
+                                            data-name="{{ user.name }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No RFID users defined. Add an RFID user to get started.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Users Section -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Admin Users</h5>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAdminUserModal">
+                    <i class="fas fa-plus me-1"></i> Add Admin User
+                </button>
+            </div>
+            <div class="card-body">
+                {% if admin_users %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in admin_users %}
+                            <tr>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    <span class="badge bg-primary">
+                                        {{ user.role.name|capitalize if user.role else 'No Role' }}
+                                    </span>
+                                </td>
+                                <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No admin users defined. Add an admin user to get started.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- RFID User Authorization Modal - Only shown when on manage_authorizations route -->
+{% if auth_user is defined %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Machine Authorizations for {{ auth_user.name }}</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('manage_authorizations', user_id=auth_user.id) }}">
+                    <div class="row">
+                        {% for machine in machines %}
+                        <div class="col-md-4 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" 
+                                       value="{{ machine.id }}" id="machine-{{ machine.id }}" 
+                                       name="machine_ids" 
+                                       {% if machine.id in authorized_machines %}checked{% endif %}>
+                                <label class="form-check-label" for="machine-{{ machine.id }}">
+                                    <span class="fw-bold">{{ machine.name }}</span> 
+                                    <span class="badge bg-secondary">#{{ machine.machine_id }}</span>
+                                    <br>
+                                    <small class="text-muted">{{ machine.zone.name }} Location</small>
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mt-3">
+                        <a href="{{ url_for('users') }}" class="btn btn-secondary me-2">
+                            <i class="fas fa-arrow-left me-1"></i> Back to Users
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save me-1"></i> Save Authorizations
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Add RFID User Modal -->
+<div class="modal fade" id="addRfidUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add RFID User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('add_rfid_user') }}" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="add-rfid-tag" class="form-label">RFID Tag <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="add-rfid-tag" name="rfid_tag" required>
+                        <div class="form-text">Enter the RFID tag ID manually or use the Office RFID Reader</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-name" class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="add-name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="add-email" name="email">
+                        <div class="form-text">Optional: Email address for notifications</div>
+                    </div>
+                    
+                    <div class="mt-4 mb-2">
+                        <h6>Emergency Access Options</h6>
+                        <hr>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="add-offline-access" name="is_offline_access">
+                        <label class="form-check-label" for="add-offline-access">Offline Access Card</label>
+                        <div class="form-text">This card can access authorized machines even when network is down</div>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="add-admin-override" name="is_admin_override">
+                        <label class="form-check-label" for="add-admin-override">Admin Override Card</label>
+                        <div class="form-text">This card can access ANY machine even when network is down (use with caution)</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit RFID User Modal -->
+<div class="modal fade" id="editRfidUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit RFID User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="edit-rfid-user-form" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit-name" class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit-name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="edit-email" name="email">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="edit-active" name="active">
+                        <label class="form-check-label" for="edit-active">Active</label>
+                        <div class="form-text">Inactive users cannot access machines</div>
+                    </div>
+                    
+                    <div class="mt-4 mb-2">
+                        <h6>Emergency Access Options</h6>
+                        <hr>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="edit-offline-access" name="is_offline_access">
+                        <label class="form-check-label" for="edit-offline-access">Offline Access Card</label>
+                        <div class="form-text">This card can access authorized machines even when network is down</div>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="edit-admin-override" name="is_admin_override">
+                        <label class="form-check-label" for="edit-admin-override">Admin Override Card</label>
+                        <div class="form-text">This card can access ANY machine even when network is down (use with caution)</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete RFID User Modal -->
+<div class="modal fade" id="deleteRfidUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete RFID User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="delete-rfid-user-name"></strong>?</p>
+                <p class="text-danger">This action cannot be undone and will remove all associated logs and authorizations.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="delete-rfid-user-form" method="post">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Admin User Modal -->
+<div class="modal fade" id="addAdminUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Admin User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('add_admin_user') }}" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="add-admin-username" class="form-label">Username <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="add-admin-username" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-admin-email" class="form-label">Email <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="add-admin-email" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-admin-password" class="form-label">Password <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="add-admin-password" name="password" required>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div id="password-strength" class="progress-bar" role="progressbar" style="width: 0%;"></div>
+                        </div>
+                        <div class="form-text">Password must be at least 8 characters</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Admin</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- Machine Authorizations Modal -->
+<div class="modal fade" id="machineAuthorizationsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Machine Authorizations</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="machine-authorizations-form" method="post">
+                <div class="modal-body">
+                    <p class="mb-3">
+                        Configure which machines <strong id="auth-user-name"></strong> is authorized to use:
+                    </p>
+                    
+                    <div class="row" id="machine-authorization-list">
+                        <!-- Machine checkboxes will be loaded dynamically -->
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Loading machines...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save me-1"></i> Save Authorizations
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/user_management.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Machine authorizations modal setup
+        const machineAuthModal = document.getElementById('machineAuthorizationsModal');
+        if (machineAuthModal) {
+            machineAuthModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const userId = button.getAttribute('data-user-id');
+                const userName = button.getAttribute('data-user-name');
+                
+                // Set the user name in the modal
+                document.getElementById('auth-user-name').textContent = userName;
+                
+                // Set the form action
+                const form = document.getElementById('machine-authorizations-form');
+                form.action = '/authorizations/' + userId;
+                
+                // Fetch the machine authorizations
+                fetch('/api/user_authorizations/' + userId)
+                    .then(response => response.json())
+                    .then(data => {
+                        const machineList = document.getElementById('machine-authorization-list');
+                        
+                        // Clear previous content
+                        machineList.innerHTML = '';
+                        
+                        // Group machines by location/zone
+                        const zoneMap = {};
+                        
+                        data.machines.forEach(machine => {
+                            if (!zoneMap[machine.zone_name]) {
+                                zoneMap[machine.zone_name] = [];
+                            }
+                            zoneMap[machine.zone_name].push(machine);
+                        });
+                        
+                        // Create section for each zone
+                        for (const [zoneName, machines] of Object.entries(zoneMap)) {
+                            // Add zone header
+                            const zoneHeader = document.createElement('div');
+                            zoneHeader.className = 'col-md-12 mb-2';
+                            zoneHeader.innerHTML = `
+                                <h5 class="border-bottom pb-2">${zoneName} Location</h5>
+                            `;
+                            machineList.appendChild(zoneHeader);
+                            
+                            // Add machine checkboxes
+                            machines.forEach(machine => {
+                                const machineCol = document.createElement('div');
+                                machineCol.className = 'col-md-4 mb-3';
+                                
+                                const controller = machine.node_name ? 
+                                    `<small class="d-block text-muted">Node: ${machine.node_name} (Port ${machine.node_port})</small>` : 
+                                    (machine.ip_address ? 
+                                        `<small class="d-block text-muted">IP: ${machine.ip_address}</small>` : 
+                                        '');
+                                
+                                machineCol.innerHTML = `
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" 
+                                               value="${machine.id}" id="machine-${machine.id}" 
+                                               name="machine_ids" 
+                                               ${machine.authorized ? 'checked' : ''}>
+                                        <label class="form-check-label" for="machine-${machine.id}">
+                                            <span class="fw-bold">${machine.name}</span> 
+                                            <span class="badge bg-secondary">#${machine.machine_id}</span>
+                                            <br>
+                                            ${controller}
+                                        </label>
+                                    </div>
+                                `;
+                                machineList.appendChild(machineCol);
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching authorizations:', error);
+                        const machineList = document.getElementById('machine-authorization-list');
+                        machineList.innerHTML = `
+                            <div class="col-12">
+                                <div class="alert alert-danger">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Error loading machine authorizations. Please try again.
+                                </div>
+                            </div>
+                        `;
+                    });
+            });
+        }
+        
+        // Edit RFID user modal setup
+        const editRfidUserModal = document.getElementById('editRfidUserModal');
+        if (editRfidUserModal) {
+            editRfidUserModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const id = button.getAttribute('data-id');
+                const name = button.getAttribute('data-name');
+                const email = button.getAttribute('data-email');
+                const active = button.getAttribute('data-active') === '1';
+                const isOfflineAccess = button.getAttribute('data-offline-access') === '1';
+                const isAdminOverride = button.getAttribute('data-admin-override') === '1';
+                
+                const form = this.querySelector('#edit-rfid-user-form');
+                form.action = '/users/edit_rfid/' + id;
+                
+                this.querySelector('#edit-name').value = name;
+                this.querySelector('#edit-email').value = email;
+                this.querySelector('#edit-active').checked = active;
+                this.querySelector('#edit-offline-access').checked = isOfflineAccess;
+                this.querySelector('#edit-admin-override').checked = isAdminOverride;
+            });
+        }
+        
+        // Delete RFID user modal setup
+        const deleteRfidUserModal = document.getElementById('deleteRfidUserModal');
+        if (deleteRfidUserModal) {
+            deleteRfidUserModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const id = button.getAttribute('data-id');
+                const name = button.getAttribute('data-name');
+                
+                this.querySelector('#delete-rfid-user-name').textContent = name;
+                this.querySelector('#delete-rfid-user-form').action = '/users/delete_rfid/' + id;
+            });
+        }
+        
+        // Password strength meter
+        const passwordInput = document.getElementById('add-admin-password');
+        const strengthMeter = document.getElementById('password-strength');
+        
+        if (passwordInput && strengthMeter) {
+            passwordInput.addEventListener('input', function() {
+                const strength = calculatePasswordStrength(this.value);
+                let color, width;
+                
+                if (strength === 0) {
+                    color = 'bg-danger';
+                    width = '33%';
+                } else if (strength === 1) {
+                    color = 'bg-warning';
+                    width = '66%';
+                } else {
+                    color = 'bg-success';
+                    width = '100%';
+                }
+                
+                strengthMeter.className = 'progress-bar ' + color;
+                strengthMeter.style.width = width;
+            });
+        }
+    });
+</script>
+{% endblock %}

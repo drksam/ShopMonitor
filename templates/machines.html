@@ -1,0 +1,605 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1><i class="fas fa-industry me-2"></i>Machine Management</h1>
+    </div>
+</div>
+
+<!-- Zones Section -->
+<div class="row mb-5">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Locations</h5>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addZoneModal">
+                    <i class="fas fa-plus me-1"></i> Add Location
+                </button>
+            </div>
+            <div class="card-body">
+                {% if zones %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Machine Count</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for zone in zones %}
+                            <tr>
+                                <td>{{ zone.name }}</td>
+                                <td>{{ zone.description or '-' }}</td>
+                                <td>{{ zone.machines.count() }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary me-1" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#editZoneModal" 
+                                            data-id="{{ zone.id }}"
+                                            data-name="{{ zone.name }}"
+                                            data-description="{{ zone.description or '' }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteZoneModal"
+                                            data-id="{{ zone.id }}"
+                                            data-name="{{ zone.name }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No locations defined. Add a location to get started.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Machines Section -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Machines</h5>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addMachineModal">
+                    <i class="fas fa-plus me-1"></i> Add Machine
+                </button>
+            </div>
+            <div class="card-body">
+                {% if machines %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Location</th>
+                                <th>Controller</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for machine in machines %}
+                            <tr>
+                                <td><span class="badge bg-secondary">#{{ machine.machine_id }}</span></td>
+                                <td>{{ machine.name }}</td>
+                                <td>{{ machine.zone.name }}</td>
+                                <td>
+                                    {% if machine.node_id %}
+                                    <span class="badge bg-info">{{ machine.node.name }}</span>
+                                    <small class="d-block text-muted">Port: {{ machine.node_port }}</small>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ machine.ip_address or 'Not configured' }}</span>
+                                    <small class="d-block text-muted">Direct connection</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge {% if machine.status == 'active' %}bg-success{% 
+                                    elif machine.status == 'warning' %}bg-warning{% 
+                                    elif machine.status == 'offline' %}bg-secondary{% 
+                                    else %}bg-primary{% endif %}">
+                                        {{ machine.status|capitalize }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary me-1" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#editMachineModal" 
+                                            data-id="{{ machine.id }}"
+                                            data-machine-id="{{ machine.machine_id }}"
+                                            data-name="{{ machine.name }}"
+                                            data-description="{{ machine.description or '' }}"
+                                            data-zone-id="{{ machine.zone_id }}"
+                                            data-ip-address="{{ machine.ip_address or '' }}"
+                                            data-node-id="{{ machine.node_id or '' }}"
+                                            data-node-port="{{ machine.node_port }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteMachineModal"
+                                            data-id="{{ machine.id }}"
+                                            data-name="{{ machine.name }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No machines defined. Add a machine to get started.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Zone Modal -->
+<div class="modal fade" id="addZoneModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Location</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('add_zone') }}" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="add-zone-name" class="form-label">Location Name</label>
+                        <input type="text" class="form-control" id="add-zone-name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-zone-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="add-zone-description" name="description" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Location</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Zone Modal -->
+<div class="modal fade" id="editZoneModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Location</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="edit-zone-form" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit-zone-name" class="form-label">Location Name</label>
+                        <input type="text" class="form-control" id="edit-zone-name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-zone-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="edit-zone-description" name="description" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Zone Modal -->
+<div class="modal fade" id="deleteZoneModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Location</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="delete-zone-name"></strong>?</p>
+                <p class="text-danger">This action cannot be undone. All machines in this location should be moved or deleted first.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="delete-zone-form" method="post">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Machine Modal -->
+<div class="modal fade" id="addMachineModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Machine</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('add_machine') }}" method="post">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="add-machine-id" class="form-label">Machine ID</label>
+                            <input type="text" class="form-control" id="add-machine-id" name="machine_id" required maxlength="2" placeholder="01">
+                            <small class="form-text text-muted">2-digit identifier for Arduino communication</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="add-machine-name" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="add-machine-name" name="name" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-machine-zone" class="form-label">Location</label>
+                        <select class="form-select" id="add-machine-zone" name="zone_id" required>
+                            <option value="">Select a location...</option>
+                            {% for zone in zones %}
+                            <option value="{{ zone.id }}">{{ zone.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-machine-controller" class="form-label">Controller Type</label>
+                        <select class="form-select" id="add-machine-controller" name="controller_type">
+                            <option value="direct">Direct Connection (Legacy)</option>
+                            <option value="node" selected>Node-based (ESP32/Arduino)</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Direct connection settings (legacy) -->
+                    <div id="direct-connection-fields" class="mb-3" style="display:none;">
+                        <label for="add-machine-ip" class="form-label">IP Address</label>
+                        <input type="text" class="form-control" id="add-machine-ip" name="ip_address" placeholder="192.168.1.100">
+                        <small class="form-text text-muted">IP address of the Arduino controller.</small>
+                    </div>
+                    
+                    <!-- Node-based settings -->
+                    <div id="node-connection-fields" class="row mb-3">
+                        <div class="col-md-8 mb-3">
+                            <label for="add-machine-node" class="form-label">Node</label>
+                            <select class="form-select" id="add-machine-node" name="node_id">
+                                <option value="">Select a node...</option>
+                                {% for node in nodes %}
+                                <option value="{{ node.id }}">{{ node.name }} ({{ node.ip_address or 'Not connected' }})</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Select the Arduino/ESP32 device that controls this machine.</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="add-machine-port" class="form-label">Port</label>
+                            <select class="form-select" id="add-machine-port" name="node_port">
+                                <option value="0">Port 0</option>
+                                <option value="1">Port 1</option>
+                                <option value="2">Port 2</option>
+                                <option value="3">Port 3</option>
+                            </select>
+                            <small class="form-text text-muted">RFID reader port (0-3).</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="add-machine-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="add-machine-description" name="description" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Machine</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Machine Modal -->
+<div class="modal fade" id="editMachineModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Machine</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="edit-machine-form" method="post">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit-machine-id" class="form-label">Machine ID</label>
+                            <input type="text" class="form-control" id="edit-machine-id" disabled>
+                            <small class="form-text text-muted">ID cannot be changed</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit-machine-name" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="edit-machine-name" name="name" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-machine-zone" class="form-label">Location</label>
+                        <select class="form-select" id="edit-machine-zone" name="zone_id" required>
+                            {% for zone in zones %}
+                            <option value="{{ zone.id }}">{{ zone.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-machine-controller" class="form-label">Controller Type</label>
+                        <select class="form-select" id="edit-machine-controller" name="controller_type">
+                            <option value="direct">Direct Connection (Legacy)</option>
+                            <option value="node" selected>Node-based (ESP32/Arduino)</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Direct connection settings (legacy) -->
+                    <div id="edit-direct-connection-fields" class="mb-3">
+                        <label for="edit-machine-ip" class="form-label">IP Address</label>
+                        <input type="text" class="form-control" id="edit-machine-ip" name="ip_address" placeholder="192.168.1.100">
+                        <small class="form-text text-muted">IP address of the Arduino controller.</small>
+                    </div>
+                    
+                    <!-- Node-based settings -->
+                    <div id="edit-node-connection-fields" class="row mb-3">
+                        <div class="col-md-8 mb-3">
+                            <label for="edit-machine-node" class="form-label">Node</label>
+                            <select class="form-select" id="edit-machine-node" name="node_id">
+                                <option value="">Select a node...</option>
+                                {% for node in nodes %}
+                                <option value="{{ node.id }}">{{ node.name }} ({{ node.ip_address or 'Not connected' }})</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Select the Arduino/ESP32 device that controls this machine.</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="edit-machine-port" class="form-label">Port</label>
+                            <select class="form-select" id="edit-machine-port" name="node_port">
+                                <option value="0">Port 0</option>
+                                <option value="1">Port 1</option>
+                                <option value="2">Port 2</option>
+                                <option value="3">Port 3</option>
+                            </select>
+                            <small class="form-text text-muted">RFID reader port (0-3).</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit-machine-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="edit-machine-description" name="description" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Machine Modal -->
+<div class="modal fade" id="deleteMachineModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Machine</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="delete-machine-name"></strong>?</p>
+                <p class="text-danger">This action cannot be undone and will remove all associated logs and authorizations.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="delete-machine-form" method="post">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Edit zone modal setup
+        const editZoneModal = document.getElementById('editZoneModal');
+        if (editZoneModal) {
+            editZoneModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const id = button.getAttribute('data-id');
+                const name = button.getAttribute('data-name');
+                const description = button.getAttribute('data-description');
+                
+                const form = this.querySelector('#edit-zone-form');
+                form.action = '/zones/edit/' + id;
+                
+                this.querySelector('#edit-zone-name').value = name;
+                this.querySelector('#edit-zone-description').value = description;
+            });
+        }
+        
+        // Delete zone modal setup
+        const deleteZoneModal = document.getElementById('deleteZoneModal');
+        if (deleteZoneModal) {
+            deleteZoneModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const id = button.getAttribute('data-id');
+                const name = button.getAttribute('data-name');
+                
+                this.querySelector('#delete-zone-name').textContent = name;
+                this.querySelector('#delete-zone-form').action = '/zones/delete/' + id;
+            });
+        }
+        
+        // Edit machine modal setup
+        const editMachineModal = document.getElementById('editMachineModal');
+        if (editMachineModal) {
+            editMachineModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const id = button.getAttribute('data-id');
+                const machineId = button.getAttribute('data-machine-id');
+                const name = button.getAttribute('data-name');
+                const description = button.getAttribute('data-description');
+                const zoneId = button.getAttribute('data-zone-id');
+                const ipAddress = button.getAttribute('data-ip-address');
+                const nodeId = button.getAttribute('data-node-id') || '';
+                const nodePort = button.getAttribute('data-node-port') || '0';
+                
+                const form = this.querySelector('#edit-machine-form');
+                form.action = '/machines/edit/' + id;
+                
+                // Set field values
+                this.querySelector('#edit-machine-id').value = machineId;
+                this.querySelector('#edit-machine-name').value = name;
+                this.querySelector('#edit-machine-description').value = description;
+                this.querySelector('#edit-machine-zone').value = zoneId;
+                this.querySelector('#edit-machine-ip').value = ipAddress;
+                
+                // Set node fields if available
+                if (this.querySelector('#edit-machine-node')) {
+                    this.querySelector('#edit-machine-node').value = nodeId;
+                    this.querySelector('#edit-machine-port').value = nodePort;
+                }
+                
+                // Set controller type radio based on whether machine uses node or direct connection
+                const controllerTypeSelect = this.querySelector('#edit-machine-controller');
+                if (controllerTypeSelect) {
+                    if (nodeId) {
+                        controllerTypeSelect.value = 'node';
+                        document.getElementById('edit-direct-connection-fields').style.display = 'none';
+                        document.getElementById('edit-node-connection-fields').style.display = 'flex';
+                    } else {
+                        controllerTypeSelect.value = 'direct';
+                        document.getElementById('edit-direct-connection-fields').style.display = 'block';
+                        document.getElementById('edit-node-connection-fields').style.display = 'none';
+                    }
+                }
+            });
+        }
+        
+        // Delete machine modal setup
+        const deleteMachineModal = document.getElementById('deleteMachineModal');
+        if (deleteMachineModal) {
+            deleteMachineModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const id = button.getAttribute('data-id');
+                const name = button.getAttribute('data-name');
+                
+                this.querySelector('#delete-machine-name').textContent = name;
+                this.querySelector('#delete-machine-form').action = '/machines/delete/' + id;
+            });
+        }
+        
+        // Validate machine ID format (2-digit number)
+        const machineIdInput = document.getElementById('add-machine-id');
+        if (machineIdInput) {
+            machineIdInput.addEventListener('input', function() {
+                // Allow only digits
+                this.value = this.value.replace(/[^0-9]/g, '');
+                
+                // Limit to 2 characters
+                if (this.value.length > 2) {
+                    this.value = this.value.slice(0, 2);
+                }
+            });
+        }
+        
+        // IP address validation
+        const ipAddressInputs = document.querySelectorAll('input[name="ip_address"]');
+        ipAddressInputs.forEach(input => {
+            input.addEventListener('blur', function() {
+                if (this.value && !isValidIpAddress(this.value)) {
+                    this.classList.add('is-invalid');
+                    
+                    // Add or update validation message
+                    let feedback = this.nextElementSibling;
+                    if (!feedback || !feedback.classList.contains('invalid-feedback')) {
+                        feedback = document.createElement('div');
+                        feedback.classList.add('invalid-feedback');
+                        this.parentNode.insertBefore(feedback, this.nextElementSibling);
+                    }
+                    feedback.textContent = 'Please enter a valid IP address';
+                } else {
+                    this.classList.remove('is-invalid');
+                    
+                    // Remove validation message if it exists
+                    const feedback = this.nextElementSibling;
+                    if (feedback && feedback.classList.contains('invalid-feedback')) {
+                        feedback.remove();
+                    }
+                }
+            });
+        });
+        
+        // Controller type toggle for add machine modal
+        const addMachineControllerSelect = document.getElementById('add-machine-controller');
+        if (addMachineControllerSelect) {
+            const directFields = document.getElementById('direct-connection-fields');
+            const nodeFields = document.getElementById('node-connection-fields');
+            
+            // Initial state
+            directFields.style.display = addMachineControllerSelect.value === 'direct' ? 'block' : 'none';
+            nodeFields.style.display = addMachineControllerSelect.value === 'node' ? 'flex' : 'none';
+            
+            addMachineControllerSelect.addEventListener('change', function() {
+                if (this.value === 'direct') {
+                    directFields.style.display = 'block';
+                    nodeFields.style.display = 'none';
+                } else {
+                    directFields.style.display = 'none';
+                    nodeFields.style.display = 'flex';
+                }
+            });
+        }
+        
+        // Controller type toggle for edit machine modal
+        const editMachineControllerSelect = document.getElementById('edit-machine-controller');
+        if (editMachineControllerSelect) {
+            const directFields = document.getElementById('edit-direct-connection-fields');
+            const nodeFields = document.getElementById('edit-node-connection-fields');
+            
+            // Initial state
+            directFields.style.display = editMachineControllerSelect.value === 'direct' ? 'block' : 'none';
+            nodeFields.style.display = editMachineControllerSelect.value === 'node' ? 'flex' : 'none';
+            
+            editMachineControllerSelect.addEventListener('change', function() {
+                if (this.value === 'direct') {
+                    directFields.style.display = 'block';
+                    nodeFields.style.display = 'none';
+                } else {
+                    directFields.style.display = 'none';
+                    nodeFields.style.display = 'flex';
+                }
+            });
+        }
+        
+        // IP address validation function
+        function isValidIpAddress(ip) {
+            // Regular expression for IP address validation
+            const regex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+            return regex.test(ip);
+        }
+    });
+</script>
+{% endblock %}

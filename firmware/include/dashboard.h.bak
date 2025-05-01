@@ -1,0 +1,1042 @@
+#ifndef DASHBOARD_H
+#define DASHBOARD_H
+
+// Declare the external HTML content that is defined in main.cpp
+extern const char* DASHBOARD_HTML;
+
+#endif // DASHBOARD_H
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nooyen RFID Node Configuration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+        h1, h2 {
+            color: #0066cc;
+        }
+        .card {
+            background: #f9f9f9;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .status-item {
+            flex: 1;
+            min-width: 200px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .machine-status {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .machine {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .machine.idle {
+            background-color: #e8f4f8;
+        }
+        .machine.active {
+            background-color: #e1f7e1;
+        }
+        .machine.offline {
+            background-color: #f8f8f8;
+            color: #999;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0055aa;
+        }
+        .hidden {
+            display: none;
+        }
+        .tab {
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+            border-radius: 4px 4px 0 0;
+        }
+        .tab button {
+            background-color: inherit;
+            float: left;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 10px 16px;
+            transition: 0.3s;
+            font-size: 14px;
+            color: #333;
+            margin-right: 0;
+        }
+        .tab button:hover {
+            background-color: #ddd;
+        }
+        .tab button.active {
+            background-color: #ccc;
+        }
+        .tabcontent {
+            display: none;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #0066cc;
+            width: 20px;
+            height: 20px;
+            animation: spin 2s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .alert {
+            padding: 10px;
+            background-color: #f44336;
+            color: white;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #4CAF50;
+        }
+        .close-btn {
+            margin-left: 15px;
+            color: white;
+            font-weight: bold;
+            float: right;
+            font-size: 22px;
+            line-height: 20px;
+            cursor: pointer;
+        }
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .checkbox-container input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+            margin-bottom: 0;
+        }
+        .wifi-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .wifi-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        .wifi-item:hover {
+            background-color: #f5f5f5;
+        }
+        .wifi-info {
+            display: flex;
+            justify-content: space-between;
+        }
+        .wifi-name {
+            font-weight: bold;
+        }
+        .wifi-signal {
+            color: #666;
+        }
+        .form-actions {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+        .status-panel {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+        .status-panel h3 {
+            margin-top: 0;
+        }
+        .status-item {
+            margin-bottom: 5px;
+        }
+        .status-label {
+            font-weight: bold;
+            display: inline-block;
+            width: 150px;
+        }
+        .flex-container {
+            display: flex;
+            gap: 15px;
+        }
+        .flex-item {
+            flex: 1;
+        }
+        @media (max-width: 768px) {
+            .flex-container {
+                flex-direction: column;
+            }
+        }
+        .pin-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .pin-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .pin-on {
+            background-color: #4CAF50;
+        }
+        .pin-off {
+            background-color: #ccc;
+        }
+        .circle-btn {
+            display: inline-block;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            margin: 5px;
+            cursor: pointer;
+            text-align: center;
+            line-height: 60px;
+            font-weight: bold;
+            color: #333;
+        }
+        .circle-btn:hover {
+            background-color: #e9e9e9;
+        }
+        .circle-btn.active {
+            background-color: #0066cc;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Nooyen RFID Node Configuration</h1>
+    
+    <div id="notification" class="alert hidden">
+        <span class="close-btn" onclick="this.parentElement.style.display='none';">&times;</span>
+        <span id="notification-message"></span>
+    </div>
+    
+    <div class="tab">
+        <button class="tablinks active" onclick="openTab(event, 'status')">Status</button>
+        <button class="tablinks" onclick="openTab(event, 'config')">Configuration</button>
+        <button class="tablinks" onclick="openTab(event, 'network')">Network</button>
+        <button class="tablinks" onclick="openTab(event, 'control')">Control</button>
+        <button class="tablinks" onclick="openTab(event, 'tools')">Tools</button>
+    </div>
+    
+    <div id="status" class="tabcontent" style="display: block;">
+        <h2>Node Status</h2>
+        <div class="status-panel">
+            <h3>System Information</h3>
+            <div class="status-item">
+                <span class="status-label">Node Name:</span>
+                <span id="node-name">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Node Type:</span>
+                <span id="node-type">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">IP Address:</span>
+                <span id="ip-address">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">WiFi Signal:</span>
+                <span id="wifi-signal">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Server URL:</span>
+                <span id="server-url">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Free Memory:</span>
+                <span id="free-memory">Loading...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Uptime:</span>
+                <span id="uptime">Loading...</span>
+            </div>
+        </div>
+        
+        <div id="machine-monitor-status" class="status-panel">
+            <h3>Machine Monitor Status</h3>
+            <div class="machine-status" id="location-status">
+                <div class="machine idle">
+                    <h4>Location 1</h4>
+                    <div>Status: <span id="location1-status">Idle</span></div>
+                    <div>Current Tag: <span id="location1-tag">None</span></div>
+                    <div>Activity Count: <span id="location1-count">0</span></div>
+                </div>
+                <div class="machine idle">
+                    <h4>Location 2</h4>
+                    <div>Status: <span id="location2-status">Idle</span></div>
+                    <div>Current Tag: <span id="location2-tag">None</span></div>
+                    <div>Activity Count: <span id="location2-count">0</span></div>
+                </div>
+                <div class="machine idle">
+                    <h4>Location 3</h4>
+                    <div>Status: <span id="location3-status">Idle</span></div>
+                    <div>Current Tag: <span id="location3-tag">None</span></div>
+                    <div>Activity Count: <span id="location3-count">0</span></div>
+                </div>
+                <div class="machine idle">
+                    <h4>Location 4</h4>
+                    <div>Status: <span id="location4-status">Idle</span></div>
+                    <div>Current Tag: <span id="location4-tag">None</span></div>
+                    <div>Activity Count: <span id="location4-count">0</span></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="office-reader-status" class="status-panel hidden">
+            <h3>Office Reader Status</h3>
+            <div class="status-item">
+                <span class="status-label">Last Tag Read:</span>
+                <span id="last-tag-read">None</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Last Read Time:</span>
+                <span id="last-read-time">Never</span>
+            </div>
+        </div>
+        
+        <div id="accessory-io-status" class="status-panel hidden">
+            <h3>Accessory I/O Status</h3>
+            <div class="flex-container">
+                <div class="flex-item">
+                    <h4>Relay Outputs</h4>
+                    <div class="pin-status">
+                        <div class="pin-indicator" id="relay1-indicator"></div>
+                        <span>Relay 1: </span>
+                        <span id="relay1-status">OFF</span>
+                    </div>
+                    <div class="pin-status">
+                        <div class="pin-indicator" id="relay2-indicator"></div>
+                        <span>Relay 2: </span>
+                        <span id="relay2-status">OFF</span>
+                    </div>
+                    <div class="pin-status">
+                        <div class="pin-indicator" id="relay3-indicator"></div>
+                        <span>Relay 3: </span>
+                        <span id="relay3-status">OFF</span>
+                    </div>
+                    <div class="pin-status">
+                        <div class="pin-indicator" id="relay4-indicator"></div>
+                        <span>Relay 4: </span>
+                        <span id="relay4-status">OFF</span>
+                    </div>
+                </div>
+                <div class="flex-item">
+                    <h4>Input Status</h4>
+                    <div class="pin-status">
+                        <div class="pin-indicator" id="input1-indicator"></div>
+                        <span>Input 1: </span>
+                        <span id="input1-status">LOW</span>
+                    </div>
+                    <div class="pin-status">
+                        <div class="pin-indicator" id="input2-indicator"></div>
+                        <span>Input 2: </span>
+                        <span id="input2-status">LOW</span>
+                    </div>
+                    <div class="pin-status">
+                        <div class="pin-indicator" id="input3-indicator"></div>
+                        <span>Input 3: </span>
+                        <span id="input3-status">LOW</span>
+                    </div>
+                    <div class="pin-status">
+                        <div class="pin-indicator" id="input4-indicator"></div>
+                        <span>Input 4: </span>
+                        <span id="input4-status">LOW</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="config" class="tabcontent">
+        <h2>Node Configuration</h2>
+        <form id="config-form">
+            <div class="card">
+                <h3>Basic Configuration</h3>
+                <div>
+                    <label for="node-name-input">Node Name:</label>
+                    <input type="text" id="node-name-input" name="nodeName" placeholder="e.g., NooyenNode1">
+                </div>
+                
+                <div>
+                    <label for="node-type-select">Node Type:</label>
+                    <select id="node-type-select" name="nodeType">
+                        <option value="0">Machine Monitor</option>
+                        <option value="1">Office RFID Reader</option>
+                        <option value="2">Accessory I/O Controller</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="server-url-input">Server URL:</label>
+                    <input type="text" id="server-url-input" name="serverUrl" placeholder="e.g., http://192.168.1.100:5000">
+                </div>
+            </div>
+            
+            <div id="machine-config" class="card">
+                <h3>Machine IDs Configuration</h3>
+                <p>Set the 2-digit machine IDs for each location connected to this node.</p>
+                
+                <div>
+                    <label for="machine1-id">Location 1 Machine ID:</label>
+                    <input type="text" id="machine1-id" name="machine1" placeholder="e.g., 01" maxlength="2" pattern="[0-9]{1,2}">
+                </div>
+                
+                <div>
+                    <label for="machine2-id">Location 2 Machine ID:</label>
+                    <input type="text" id="machine2-id" name="machine2" placeholder="e.g., 02" maxlength="2" pattern="[0-9]{1,2}">
+                </div>
+                
+                <div>
+                    <label for="machine3-id">Location 3 Machine ID:</label>
+                    <input type="text" id="machine3-id" name="machine3" placeholder="e.g., 03" maxlength="2" pattern="[0-9]{1,2}">
+                </div>
+                
+                <div>
+                    <label for="machine4-id">Location 4 Machine ID:</label>
+                    <input type="text" id="machine4-id" name="machine4" placeholder="e.g., 04" maxlength="2" pattern="[0-9]{1,2}">
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" id="reset-button" class="btn-danger">Reset to Default</button>
+                <button type="submit" id="save-button">Save Configuration</button>
+            </div>
+        </form>
+    </div>
+    
+    <div id="network" class="tabcontent">
+        <h2>Network Configuration</h2>
+        <div class="card">
+            <h3>WiFi Settings</h3>
+            <div>
+                <label for="wifi-ssid">Current WiFi SSID:</label>
+                <input type="text" id="wifi-ssid" name="wifiSSID" readonly>
+            </div>
+            
+            <div>
+                <button type="button" id="scan-wifi-button">Scan WiFi Networks</button>
+                <div class="loader hidden" id="wifi-scan-loader"></div>
+            </div>
+            
+            <div id="wifi-list" class="wifi-list hidden">
+                <!-- WiFi networks will be populated here -->
+            </div>
+            
+            <div id="wifi-form" class="hidden">
+                <div>
+                    <label for="new-wifi-ssid">Selected WiFi Network:</label>
+                    <input type="text" id="new-wifi-ssid" name="newWifiSSID" readonly>
+                </div>
+                
+                <div>
+                    <label for="wifi-password">WiFi Password:</label>
+                    <input type="password" id="wifi-password" name="wifiPassword">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" id="connect-wifi-button">Connect</button>
+                    <button type="button" id="cancel-wifi-button" class="btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="control" class="tabcontent">
+        <h2>Control Panel</h2>
+        
+        <div id="relay-control" class="card">
+            <h3>Relay Control</h3>
+            <p>Toggle relay outputs manually. Changes will be temporary and not saved.</p>
+            
+            <div class="flex-container">
+                <div class="flex-item">
+                    <h4>Relay 1</h4>
+                    <button type="button" class="relay-toggle" data-relay="1">Toggle</button>
+                </div>
+                <div class="flex-item">
+                    <h4>Relay 2</h4>
+                    <button type="button" class="relay-toggle" data-relay="2">Toggle</button>
+                </div>
+                <div class="flex-item">
+                    <h4>Relay 3</h4>
+                    <button type="button" class="relay-toggle" data-relay="3">Toggle</button>
+                </div>
+                <div class="flex-item">
+                    <h4>Relay 4</h4>
+                    <button type="button" class="relay-toggle" data-relay="4">Toggle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="tools" class="tabcontent">
+        <h2>System Tools</h2>
+        
+        <div class="card">
+            <h3>System Actions</h3>
+            <p>Warning: Use these actions with caution. They will affect the node operation.</p>
+            
+            <div class="flex-container">
+                <div class="flex-item">
+                    <h4>Restart Node</h4>
+                    <p>Perform a soft restart of the node.</p>
+                    <button type="button" id="restart-button">Restart</button>
+                </div>
+                <div class="flex-item">
+                    <h4>Factory Reset</h4>
+                    <p>Reset all settings to factory defaults. This will erase all customizations!</p>
+                    <button type="button" id="factory-reset-button" class="btn-danger">Factory Reset</button>
+                </div>
+                <div class="flex-item">
+                    <h4>Wiring Diagram</h4>
+                    <p>View the hardware wiring diagram for this node.</p>
+                    <button type="button" id="wiring-diagram-button">View Diagram</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Tab functionality
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tablinks");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+            
+            // Refresh data when switching to status tab
+            if (tabName === "status") {
+                fetchStatus();
+            }
+        }
+        
+        // Show notification
+        function showNotification(message, isSuccess) {
+            const notif = document.getElementById('notification');
+            notif.className = isSuccess ? 'alert success' : 'alert';
+            notif.style.display = 'block';
+            document.getElementById('notification-message').textContent = message;
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                notif.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Fetch status data
+        function fetchStatus() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    // Update system info
+                    document.getElementById('node-name').textContent = data.nodeName;
+                    document.getElementById('ip-address').textContent = data.ipAddress;
+                    document.getElementById('wifi-signal').textContent = data.wifiSignal + ' dBm';
+                    document.getElementById('server-url').textContent = data.serverUrl;
+                    document.getElementById('free-memory').textContent = data.freeMemory + ' bytes';
+                    document.getElementById('uptime').textContent = data.uptime;
+                    
+                    // Update node type specific display
+                    const nodeType = data.nodeType;
+                    document.getElementById('node-type').textContent = 
+                        nodeType === 0 ? 'Machine Monitor' : 
+                        nodeType === 1 ? 'Office RFID Reader' : 
+                        'Accessory I/O Controller';
+                    
+                    // Show/hide type-specific panels
+                    document.getElementById('machine-monitor-status').style.display = nodeType === 0 ? 'block' : 'none';
+                    document.getElementById('office-reader-status').style.display = nodeType === 1 ? 'block' : 'none';
+                    document.getElementById('accessory-io-status').style.display = nodeType === 2 ? 'block' : 'none';
+                    
+                    // Update machine monitor data
+                    if (nodeType === 0 && data.machineData) {
+                        for (let i = 0; i < 4; i++) {
+                            const location = i + 1;
+                            if (data.machineData[i]) {
+                                document.getElementById(`location${location}-status`).textContent = data.machineData[i].status;
+                                document.getElementById(`location${location}-tag`).textContent = data.machineData[i].tag || 'None';
+                                document.getElementById(`location${location}-count`).textContent = data.machineData[i].count;
+                            }
+                        }
+                    }
+                    
+                    // Update office reader data
+                    if (nodeType === 1) {
+                        document.getElementById('last-tag-read').textContent = data.lastTagRead || 'None';
+                        document.getElementById('last-read-time').textContent = data.lastReadTime || 'Never';
+                    }
+                    
+                    // Update accessory IO data
+                    if (nodeType === 2 && data.pinStatus) {
+                        for (let i = 0; i < 4; i++) {
+                            const pin = i + 1;
+                            if (data.pinStatus.relays) {
+                                const relayStatus = data.pinStatus.relays[i] ? 'ON' : 'OFF';
+                                document.getElementById(`relay${pin}-status`).textContent = relayStatus;
+                                const indicator = document.getElementById(`relay${pin}-indicator`);
+                                indicator.className = 'pin-indicator ' + (data.pinStatus.relays[i] ? 'pin-on' : 'pin-off');
+                            }
+                            
+                            if (data.pinStatus.inputs) {
+                                const inputStatus = data.pinStatus.inputs[i] ? 'HIGH' : 'LOW';
+                                document.getElementById(`input${pin}-status`).textContent = inputStatus;
+                                const indicator = document.getElementById(`input${pin}-indicator`);
+                                indicator.className = 'pin-indicator ' + (data.pinStatus.inputs[i] ? 'pin-on' : 'pin-off');
+                            }
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching status:', error);
+                    showNotification('Error loading status data. Please try again.', false);
+                });
+        }
+        
+        // Fetch configuration
+        function fetchConfig() {
+            fetch('/config')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('node-name-input').value = data.nodeName;
+                    document.getElementById('node-type-select').value = data.nodeType;
+                    document.getElementById('server-url-input').value = data.serverUrl;
+                    document.getElementById('wifi-ssid').value = data.wifiSSID;
+                    
+                    // Set machine IDs
+                    for (let i = 0; i < 4; i++) {
+                        const machineInput = document.getElementById(`machine${i+1}-id`);
+                        if (machineInput && data.machineIDs && data.machineIDs[i]) {
+                            machineInput.value = data.machineIDs[i];
+                        }
+                    }
+                    
+                    // Update UI based on node type
+                    updateNodeTypeVisibility(data.nodeType);
+                })
+                .catch(error => {
+                    console.error('Error fetching configuration:', error);
+                    showNotification('Error loading configuration. Please try again.', false);
+                });
+        }
+        
+        // Update UI based on selected node type
+        function updateNodeTypeVisibility(nodeType) {
+            const machineConfig = document.getElementById('machine-config');
+            machineConfig.style.display = nodeType == 0 ? 'block' : 'none';
+        }
+        
+        // Save configuration
+        function saveConfig(event) {
+            event.preventDefault();
+            
+            const formData = {
+                nodeName: document.getElementById('node-name-input').value,
+                nodeType: parseInt(document.getElementById('node-type-select').value),
+                serverUrl: document.getElementById('server-url-input').value,
+                machineIDs: [
+                    document.getElementById('machine1-id').value,
+                    document.getElementById('machine2-id').value,
+                    document.getElementById('machine3-id').value,
+                    document.getElementById('machine4-id').value
+                ]
+            };
+            
+            fetch('/config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Configuration saved successfully!', true);
+                    fetchConfig(); // Refresh displayed config
+                } else {
+                    showNotification('Error saving configuration: ' + data.message, false);
+                }
+            })
+            .catch(error => {
+                console.error('Error saving configuration:', error);
+                showNotification('Error saving configuration. Please try again.', false);
+            });
+        }
+        
+        // Reset configuration
+        function resetConfig() {
+            if (confirm('Are you sure you want to reset all configuration to defaults?')) {
+                fetch('/reset', {
+                    method: 'POST',
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Configuration reset successfully!', true);
+                        fetchConfig(); // Refresh displayed config
+                    } else {
+                        showNotification('Error resetting configuration: ' + data.message, false);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error resetting configuration:', error);
+                    showNotification('Error resetting configuration. Please try again.', false);
+                });
+            }
+        }
+        
+        // Reboot device
+        function rebootDevice() {
+            if (confirm('Are you sure you want to restart the device?')) {
+                fetch('/reboot', {
+                    method: 'POST',
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Device is restarting...', true);
+                        // Attempt to reconnect after a few seconds
+                        setTimeout(() => {
+                            attemptReconnect(10);
+                        }, 5000);
+                    } else {
+                        showNotification('Error restarting device: ' + data.message, false);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error restarting device:', error);
+                    showNotification('Error restarting device. Please try again.', false);
+                });
+            }
+        }
+        
+        // Factory reset
+        function factoryReset() {
+            if (confirm('WARNING: This will erase ALL settings and return to factory defaults. Continue?')) {
+                if (confirm('Are you REALLY sure? This cannot be undone!')) {
+                    fetch('/factory-reset', {
+                        method: 'POST',
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification('Factory reset initiated. Device will restart in AP mode.', true);
+                            // Device will restart in AP mode, no need to attempt reconnect
+                        } else {
+                            showNotification('Error performing factory reset: ' + data.message, false);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error performing factory reset:', error);
+                        showNotification('Error performing factory reset. Please try again.', false);
+                    });
+                }
+            }
+        }
+        
+        // Attempt reconnection after reboot
+        function attemptReconnect(attempts) {
+            if (attempts <= 0) {
+                showNotification('Could not reconnect to the device. Please refresh the page manually.', false);
+                return;
+            }
+            
+            fetch('/status')
+                .then(response => {
+                    if (response.ok) {
+                        showNotification('Successfully reconnected to the device!', true);
+                        fetchStatus();
+                        fetchConfig();
+                    } else {
+                        setTimeout(() => {
+                            attemptReconnect(attempts - 1);
+                        }, 2000);
+                    }
+                })
+                .catch(() => {
+                    setTimeout(() => {
+                        attemptReconnect(attempts - 1);
+                    }, 2000);
+                });
+        }
+        
+        // Scan WiFi networks
+        function scanWifi() {
+            const scanButton = document.getElementById('scan-wifi-button');
+            const loader = document.getElementById('wifi-scan-loader');
+            
+            scanButton.disabled = true;
+            loader.classList.remove('hidden');
+            
+            fetch('/scan-wifi')
+                .then(response => response.json())
+                .then(data => {
+                    scanButton.disabled = false;
+                    loader.classList.add('hidden');
+                    
+                    if (data.success) {
+                        displayWifiNetworks(data.networks);
+                    } else {
+                        showNotification('Error scanning WiFi networks: ' + data.message, false);
+                    }
+                })
+                .catch(error => {
+                    scanButton.disabled = false;
+                    loader.classList.add('hidden');
+                    console.error('Error scanning WiFi:', error);
+                    showNotification('Error scanning WiFi networks. Please try again.', false);
+                });
+        }
+        
+        // Display WiFi networks
+        function displayWifiNetworks(networks) {
+            const wifiList = document.getElementById('wifi-list');
+            wifiList.innerHTML = '';
+            wifiList.classList.remove('hidden');
+            
+            if (networks.length === 0) {
+                wifiList.innerHTML = '<div class="wifi-item">No networks found</div>';
+                return;
+            }
+            
+            networks.forEach(network => {
+                const item = document.createElement('div');
+                item.className = 'wifi-item';
+                item.innerHTML = `
+                    <div class="wifi-info">
+                        <span class="wifi-name">${network.ssid}</span>
+                        <span class="wifi-signal">${network.rssi} dBm</span>
+                    </div>
+                `;
+                
+                item.addEventListener('click', () => {
+                    selectWifiNetwork(network.ssid);
+                });
+                
+                wifiList.appendChild(item);
+            });
+        }
+        
+        // Select WiFi network
+        function selectWifiNetwork(ssid) {
+            document.getElementById('new-wifi-ssid').value = ssid;
+            document.getElementById('wifi-password').value = '';
+            document.getElementById('wifi-form').classList.remove('hidden');
+            document.getElementById('wifi-password').focus();
+        }
+        
+        // Connect to WiFi
+        function connectWifi() {
+            const ssid = document.getElementById('new-wifi-ssid').value;
+            const password = document.getElementById('wifi-password').value;
+            
+            if (!ssid) {
+                showNotification('Please select a WiFi network', false);
+                return;
+            }
+            
+            const connectButton = document.getElementById('connect-wifi-button');
+            connectButton.disabled = true;
+            connectButton.textContent = 'Connecting...';
+            
+            fetch('/connect-wifi', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ ssid, password }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                connectButton.disabled = false;
+                connectButton.textContent = 'Connect';
+                
+                if (data.success) {
+                    showNotification('Connecting to WiFi network. Device will restart if successful.', true);
+                    document.getElementById('wifi-form').classList.add('hidden');
+                    document.getElementById('wifi-list').classList.add('hidden');
+                    
+                    // Try to reconnect after a delay
+                    setTimeout(() => {
+                        attemptReconnect(15);
+                    }, 10000);
+                } else {
+                    showNotification('Error connecting to WiFi: ' + data.message, false);
+                }
+            })
+            .catch(error => {
+                connectButton.disabled = false;
+                connectButton.textContent = 'Connect';
+                console.error('Error connecting to WiFi:', error);
+                showNotification('Error connecting to WiFi. Please try again.', false);
+            });
+        }
+        
+        // Toggle relay
+        function toggleRelay(relayNumber) {
+            fetch(`/relay/${relayNumber}/toggle`, {
+                method: 'POST',
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    fetchStatus(); // Refresh status to see the changed relay state
+                } else {
+                    showNotification('Error toggling relay: ' + data.message, false);
+                }
+            })
+            .catch(error => {
+                console.error('Error toggling relay:', error);
+                showNotification('Error toggling relay. Please try again.', false);
+            });
+        }
+        
+        // View wiring diagram
+        function viewWiringDiagram() {
+            window.open('/wiring-diagram', '_blank');
+        }
+        
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initial load
+            fetchStatus();
+            fetchConfig();
+            
+            // Node type change event
+            document.getElementById('node-type-select').addEventListener('change', function() {
+                updateNodeTypeVisibility(parseInt(this.value));
+            });
+            
+            // Form submission
+            document.getElementById('config-form').addEventListener('submit', saveConfig);
+            
+            // Reset button
+            document.getElementById('reset-button').addEventListener('click', resetConfig);
+            
+            // Restart button
+            document.getElementById('restart-button').addEventListener('click', rebootDevice);
+            
+            // Factory reset button
+            document.getElementById('factory-reset-button').addEventListener('click', factoryReset);
+            
+            // WiFi scan button
+            document.getElementById('scan-wifi-button').addEventListener('click', scanWifi);
+            
+            // WiFi connect button
+            document.getElementById('connect-wifi-button').addEventListener('click', connectWifi);
+            
+            // WiFi cancel button
+            document.getElementById('cancel-wifi-button').addEventListener('click', function() {
+                document.getElementById('wifi-form').classList.add('hidden');
+            });
+            
+            // Relay toggle buttons
+            document.querySelectorAll('.relay-toggle').forEach(button => {
+                button.addEventListener('click', function() {
+                    const relayNumber = this.getAttribute('data-relay');
+                    toggleRelay(relayNumber);
+                });
+            });
+            
+            // Wiring diagram button
+            document.getElementById('wiring-diagram-button').addEventListener('click', viewWiringDiagram);
+            
+            // Status refresh (every 10 seconds)
+            setInterval(fetchStatus, 10000);
+        });
+    </script>
+</body>
+</html>
+)rawliteral";
+
+// Implementation of the extern declaration
+const char* DASHBOARD_HTML = DASHBOARD_HTML_CONTENT;
+
+#endif // DASHBOARD_H

@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1><i class="fas fa-user-circle me-2"></i>User Profile</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-id-card me-2"></i>User Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="avatar-circle">
+                        <span class="avatar-text">{{ current_user.username[0]|upper }}</span>
+                    </div>
+                    <h4 class="mt-3">{{ current_user.username }}</h4>
+                    <p class="text-muted">{{ current_user.email }}</p>
+                </div>
+                
+                <div class="mb-2">
+                    <span class="fw-bold">Role:</span>
+                    <span class="badge bg-primary">{{ current_user.role.name|capitalize if current_user.role else 'User' }}</span>
+                </div>
+                
+                <div class="mb-2">
+                    <span class="fw-bold">Account Created:</span>
+                    <span>{{ current_user.created_at.strftime('%B %d, %Y') }}</span>
+                </div>
+                
+                <div class="d-grid gap-2 mt-4">
+                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                        <i class="fas fa-key me-1"></i> Change Password
+                    </button>
+                    {% if integration_configured %}
+                    <a href="{{ tracker_url }}" class="btn btn-outline-secondary" target="_blank">
+                        <i class="fas fa-external-link-alt me-1"></i> Visit NooyenUSATracker
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Activities</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_logs %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Action</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in recent_logs %}
+                            <tr>
+                                <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>{{ log.action }}</td>
+                                <td>{{ log.details }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i> No recent activities found.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if current_user.role and current_user.role.name == 'admin' %}
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-cog me-2"></i>System Integration</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="mb-0">NooyenUSATracker Integration</h5>
+                        <p class="text-muted mb-0">Bidirectional synchronization with main tracker app</p>
+                    </div>
+                    <div>
+                        <span class="badge {% if integration_configured %}bg-success{% else %}bg-danger{% endif %} p-2">
+                            {% if integration_configured %}
+                            <i class="fas fa-check-circle me-1"></i> Connected
+                            {% else %}
+                            <i class="fas fa-times-circle me-1"></i> Not Configured
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <div class="mb-2">
+                        <span class="fw-bold">Last Sync:</span>
+                        <span>{{ last_sync_time or 'Never' }}</span>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mt-3">
+                        <a href="{{ url_for('integration_web.config_page') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-cogs me-1"></i> Configure Integration
+                        </a>
+                        {% if integration_configured %}
+                        <form action="{{ url_for('integration.trigger_sync') }}" method="post">
+                            <button type="submit" class="btn btn-outline-success w-100">
+                                <i class="fas fa-sync me-1"></i> Trigger Manual Sync
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Change Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{{ url_for('update_password') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="current-password" class="form-label">Current Password <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="current-password" name="current_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new-password" class="form-label">New Password <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="new-password" name="new_password" required>
+                        <div class="progress mt-2" style="height: 5px;">
+                            <div id="password-strength" class="progress-bar" role="progressbar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirm-password" class="form-label">Confirm New Password <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="confirm-password" name="confirm_password" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Change Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .avatar-circle {
+        width: 100px;
+        height: 100px;
+        background-color: #007bff;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0 auto;
+    }
+    
+    .avatar-text {
+        color: white;
+        font-size: 48px;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/user_management.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const passwordInput = document.getElementById('new-password');
+        const strengthBar = document.getElementById('password-strength');
+        const confirmInput = document.getElementById('confirm-password');
+        
+        if (passwordInput && strengthBar) {
+            passwordInput.addEventListener('input', function() {
+                const strength = calculatePasswordStrength(this.value);
+                let width = '0%';
+                let color = 'bg-danger';
+                
+                if (strength === 1) {
+                    width = '50%';
+                    color = 'bg-warning';
+                } else if (strength === 2) {
+                    width = '100%';
+                    color = 'bg-success';
+                }
+                
+                strengthBar.style.width = width;
+                strengthBar.className = 'progress-bar ' + color;
+            });
+        }
+        
+        // Form validation
+        const form = document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                if (passwordInput.value !== confirmInput.value) {
+                    e.preventDefault();
+                    alert('Passwords do not match');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

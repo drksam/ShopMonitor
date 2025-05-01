@@ -1,0 +1,90 @@
+Office RFID Reader Visual Layout
+============================
+
+                   +----------------------------------+
+                   |                                  |
+                   |     Office RFID Registration     |
+                   |          System                  |
+                   +----------------------------------+
+                         |                |
+                         |                |
+         +---------------+                +----------------+
+         |                                                 |
+         v                                                 v
++-------------------+                              +-------------------+
+|                   |                              |                   |
+|   Control Box     |                              |   Wall Mount      |
+|                   |                              |   Interface       |
++-------------------+                              +-------------------+
+         |                                                 |
+         v                                                 v
++-------------------+                              +-------------------+
+|  +-----------+    |                              |                   |
+|  | Arduino   |    |                              |  +-----------+    |
+|  | Uno       |    |                              |  | RFID      |    |
+|  +-----------+    |                              |  | Reader    |    |
+|        |          |                              |  +-----------+    |
+|        |          |                              |        |          |
+|  +-----------+    |                              |  +-----------+    |
+|  | Ethernet  |    |                              |  | Status    |    |
+|  | Shield    |    |                              |  | LED       |    |
+|  +-----------+    |                              |  +-----------+    |
+|        |          |                              |        |          |
+|        v          |                              |  +-----------+    |
+|  +-----------+    |                              |  | Register  |    |
+|  | Power     |    |                              |  | Button    |    |
+|  | Supply    |    |                              |  +-----------+    |
+|  +-----------+    |                              |                   |
++-------------------+                              +-------------------+
+
+
+System Components Explanation:
+=============================
+
+1. Control Box:
+   - Houses the Arduino Uno microcontroller
+   - Contains Ethernet shield for network connectivity
+   - Power supply for the system
+   - Typically mounted in a secure location or IT closet
+
+2. Wall Mount Interface:
+   - MFRC522 RFID reader for scanning cards
+   - WS2812B status LED indicator
+   - Registration button
+   - Clean, user-friendly design for office environment
+   - Mounted near entrance or administrator's desk
+
+3. Operation Flow:
+   a. Registration Process:
+      - Administrator presses registration button
+      - Status LED flashes green (indicating ready to register)
+      - RFID card is placed on reader
+      - Status LED turns purple (indicating card detected)
+      - Administrator presses button again to confirm
+      - System sends RFID to server for registration
+      - Status LED indicates success (green flashes) or failure (red flashes)
+   
+   b. Normal Operation:
+      - Status LED is solid blue when idle
+      - System ready for next registration
+      - Connected to central server through Ethernet
+
+4. Status Indicators:
+   - Blue: System idle, ready for operation
+   - Green (flashing): Registration mode active
+   - Purple: RFID card scanned, waiting for confirmation
+   - Yellow: Connecting to server
+   - Green (flashing 3x): Registration successful
+   - Red (flashing 3x): Registration failed
+
+5. Physical Installation:
+   - Simple, clean wall-mounted enclosure
+   - Minimal exposed components
+   - Professional office appearance
+   - Status LED clearly visible
+   - Button easy to access but not prone to accidental presses
+
+6. Integration:
+   - Connects to the same central server as machine monitors
+   - Registers cards into the database for later machine access
+   - Can be placed at reception or administrator's desk

@@ -1,0 +1,276 @@
+{% extends 'base.html' %}
+
+{% block title %}Available NooyenUSATracker Users{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Available NooyenUSATracker Users</h4>
+                    <a href="{{ url_for('integration_web.config_page') }}" class="btn btn-sm btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Integration
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> 
+                        This page shows users from NooyenUSATracker that can be imported into the RFID Access Control system.
+                        Only users with RFID tags assigned in NooyenUSATracker will appear here.
+                    </div>
+                    
+                    <div id="loading-indicator" class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading available users from NooyenUSATracker...</p>
+                    </div>
+                    
+                    <div id="error-message" class="alert alert-danger d-none">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        <span id="error-text"></span>
+                    </div>
+                    
+                    <div id="users-container" class="d-none">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>RFID Tag</th>
+                                        <th>Email</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-table-body">
+                                    <!-- Users will be loaded here dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div id="no-users-message" class="alert alert-warning d-none">
+                            <i class="fas fa-user-slash"></i> 
+                            No new users available to import. All NooyenUSATracker users with RFID tags have already been imported.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Confirmation Modal -->
+<div class="modal fade" id="importConfirmModal" tabindex="-1" aria-labelledby="importConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importConfirmModalLabel">Confirm Import</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to import user <strong id="import-user-name"></strong>?</p>
+                <p>This will create a new user in the RFID Access Control system with the following details:</p>
+                <ul>
+                    <li>Name: <span id="import-name"></span></li>
+                    <li>RFID Tag: <span id="import-rfid"></span></li>
+                    <li>Email: <span id="import-email"></span></li>
+                </ul>
+                <p>The user's machine permissions will also be imported if available.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirm-import-btn">Import User</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Success Modal -->
+<div class="modal fade" id="importSuccessModal" tabindex="-1" aria-labelledby="importSuccessModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importSuccessModalLabel">Import Successful</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    User <strong id="success-user-name"></strong> has been successfully imported!
+                </div>
+                <p>What would you like to do next?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="#" class="btn btn-primary" id="view-user-btn">View User</a>
+                <button type="button" class="btn btn-success" id="refresh-list-btn">Refresh List</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load available users when page loads
+        loadAvailableUsers();
+        
+        // Setup event handlers
+        document.getElementById('refresh-list-btn').addEventListener('click', function() {
+            loadAvailableUsers();
+            $('#importSuccessModal').modal('hide');
+        });
+    });
+    
+    // Load available users from the API
+    function loadAvailableUsers() {
+        // Show loading indicator
+        document.getElementById('loading-indicator').classList.remove('d-none');
+        document.getElementById('users-container').classList.add('d-none');
+        document.getElementById('error-message').classList.add('d-none');
+        
+        // Fetch available users
+        fetch('/integration/user_api/available')
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading indicator
+                document.getElementById('loading-indicator').classList.add('d-none');
+                document.getElementById('users-container').classList.remove('d-none');
+                
+                if (data.success) {
+                    displayUsers(data.users);
+                } else {
+                    showError(data.error || 'Failed to load users');
+                }
+            })
+            .catch(error => {
+                document.getElementById('loading-indicator').classList.add('d-none');
+                showError('Error connecting to server: ' + error.message);
+            });
+    }
+    
+    // Display users in the table
+    function displayUsers(users) {
+        const tableBody = document.getElementById('users-table-body');
+        const noUsersMessage = document.getElementById('no-users-message');
+        
+        // Clear existing rows
+        tableBody.innerHTML = '';
+        
+        if (users.length === 0) {
+            noUsersMessage.classList.remove('d-none');
+            return;
+        }
+        
+        noUsersMessage.classList.add('d-none');
+        
+        // Add each user to the table
+        users.forEach(user => {
+            const row = document.createElement('tr');
+            
+            // Create user info columns
+            row.innerHTML = `
+                <td>${user.name}</td>
+                <td>${user.rfid_tag}</td>
+                <td>${user.email || '-'}</td>
+                <td>${user.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-danger">Inactive</span>'}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary import-btn" 
+                            data-external-id="${user.external_id}"
+                            data-name="${user.name}"
+                            data-rfid="${user.rfid_tag}"
+                            data-email="${user.email || ''}">
+                        <i class="fas fa-download"></i> Import
+                    </button>
+                </td>
+            `;
+            
+            tableBody.appendChild(row);
+        });
+        
+        // Add click handlers for import buttons
+        document.querySelectorAll('.import-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const externalId = this.getAttribute('data-external-id');
+                const name = this.getAttribute('data-name');
+                const rfid = this.getAttribute('data-rfid');
+                const email = this.getAttribute('data-email');
+                
+                // Set modal content
+                document.getElementById('import-user-name').textContent = name;
+                document.getElementById('import-name').textContent = name;
+                document.getElementById('import-rfid').textContent = rfid;
+                document.getElementById('import-email').textContent = email || 'None';
+                
+                // Set confirm button action
+                document.getElementById('confirm-import-btn').onclick = function() {
+                    importUser(externalId, name);
+                };
+                
+                // Show the modal
+                $('#importConfirmModal').modal('show');
+            });
+        });
+    }
+    
+    // Import a user
+    function importUser(externalId, name) {
+        // Hide confirmation modal
+        $('#importConfirmModal').modal('hide');
+        
+        // Show loading indicator
+        document.getElementById('loading-indicator').classList.remove('d-none');
+        document.getElementById('users-container').classList.add('d-none');
+        
+        // Send import request
+        fetch('/integration/user_api/import', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                external_id: externalId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Hide loading indicator
+            document.getElementById('loading-indicator').classList.add('d-none');
+            document.getElementById('users-container').classList.remove('d-none');
+            
+            if (data.success) {
+                // Show success modal
+                document.getElementById('success-user-name').textContent = name;
+                
+                // Set view user link
+                if (data.user && data.user.id) {
+                    document.getElementById('view-user-btn').href = `/rfid_users/${data.user.id}/edit`;
+                } else {
+                    document.getElementById('view-user-btn').classList.add('d-none');
+                }
+                
+                $('#importSuccessModal').modal('show');
+            } else {
+                showError(data.error || 'Failed to import user');
+            }
+        })
+        .catch(error => {
+            document.getElementById('loading-indicator').classList.add('d-none');
+            document.getElementById('users-container').classList.remove('d-none');
+            showError('Error importing user: ' + error.message);
+        });
+    }
+    
+    // Show error message
+    function showError(message) {
+        const errorElement = document.getElementById('error-message');
+        const errorTextElement = document.getElementById('error-text');
+        
+        errorTextElement.textContent = message;
+        errorElement.classList.remove('d-none');
+    }
+</script>
+{% endblock %}

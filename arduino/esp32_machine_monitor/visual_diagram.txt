@@ -1,0 +1,128 @@
+ESP32 Machine Monitor Visual Layout
+===============================
+
+                   +----------------------------------+
+                   |                                  |
+                   |  ESP32 Machine Monitor System    |
+                   |                                  |
+                   +----------------------------------+
+                           |               |
+                           |               |
+          +----------------+               +----------------+
+          |                                                 |
+          v                                                 v
++-------------------+                              +-------------------+
+|                   |                              |                   |
+|   Control Panel   |                              |   Machine Zones   |
+|                   |                              |                   |
++-------------------+                              +-------------------+
+          |                                                 |
+          v                                                 v
++-------------------+                              +-------------------+
+|  +-----------+    |                              |     Machine A     |
+|  | Status    |    |                              |     +------+     |
+|  | Indicator |    |                              |     |Power |     |
+|  | LEDs      |    |                              |     |Relay |     |
+|  +-----------+    |                              |     +------+     |
+|                   |                              |        |         |
+|  +-----------+    |                              |        v         |
+|  | ESP32     |    |                              |  +-----------+   |
+|  | Board     |    |                              |  | Machine   |   |
+|  +-----------+    |                              |  | Power     |   |
+|        |          |                              |  +-----------+   |
+|        |          |                              |        |         |
+|  +-----------+    |                              |        v         |
+|  | RFID      |<---+-----+                    +-->|  +-----------+   |
+|  | Readers   |    |     |                    |   |  | Activity  |   |
+|  | (x4)      |    |     |                    |   |  | Sensor    |   |
+|  +-----------+    |     |                    |   |  +-----------+   |
+|                   |     |                    |   |                  |
++-------------------+     |                    |   +------------------+
+                          |                    |
+                          |                    |   +------------------+
+                          |                    |   |                  |
+                          |                    +-->|  Machine B...D   |
+                          |                        |  (Identical      |
+                          |                        |   to Machine A)  |
+                          |                        |                  |
+                          |                        +------------------+
+                          |
+                          v
+              +-------------------------+
+              |                         |
+              |  Web Configuration UI   |
+              |  +-----------------+    |
+              |  | Setup & Status  |    |
+              |  +-----------------+    |
+              |                         |
+              |  +-----------------+    |
+              |  | OTA Updates     |    |
+              |  +-----------------+    |
+              |                         |
+              |  +-----------------+    |
+              |  | Network Config  |    |
+              |  +-----------------+    |
+              |                         |
+              +-------------------------+
+
+
+System Components Explanation:
+=============================
+
+1. Control Panel:
+   - ESP32 microcontroller with integrated WiFi
+   - Status indicator LEDs (WS2812B)
+   - Four RFID-RC522 readers via SPI
+   - Power supply
+   - Web configuration interface
+
+2. Machine Zones:
+   - Up to 4 independent machine zones per ESP32
+   - Each zone includes:
+     * Power relay to control machine power
+     * Activity sensor to detect machine usage
+     * RFID reader for user authentication
+
+3. Web Configuration UI:
+   - Accessible via browser on the local network
+   - Responsive design works on mobile devices
+   - Provides real-time status monitoring
+   - Allows configuration changes
+   - Supports OTA firmware updates
+   - RFID user management capabilities
+   - Network configuration settings
+   - Troubleshooting and diagnostics tools
+
+4. Enhanced Features vs. Arduino Version:
+   - WiFi connectivity (vs. Ethernet)
+   - Built-in configuration web interface
+   - OTA (Over-The-Air) update capability
+   - mDNS discovery for auto-detection
+   - Better handling of offline access
+   - Improved memory and processing power
+   - JSON-based configuration storage
+   - More robust networking capabilities
+   
+5. Operation Flow:
+   - User scans RFID tag at reader
+   - ESP32 verifies authorization with server
+   - If authorized, relay activates allowing machine to operate
+   - Activity sensor monitors machine usage
+   - Status LEDs indicate current state of each machine
+   - Activity counts are sent to server periodically
+   - Inactivity triggers timeout warning and eventual shutdown
+   - Configuration can be adjusted via web interface
+
+6. Status Indicators:
+   - Blue: Machine idle, ready for use
+   - Green: User authorized, machine active
+   - Red: Access denied
+   - Purple: User logging out, machine shutting down
+   - Yellow (flashing): Inactivity warning
+
+7. Physical Installation:
+   - Control panel centrally located
+   - RFID readers positioned at each machine
+   - Activity sensors connected directly to machines
+   - Power relays inline with machine power supply
+   - WiFi connectivity to network

@@ -1,0 +1,109 @@
+ARDUINO MEGA MACHINE MONITOR - WIRING DIAGRAM
+=============================================
+
+Connections for a 4-zone RFID Machine Monitor setup using Arduino Mega
+
+RFID MODULE 1 (MFRC522):
+-------------------------
+SDA (SS)  -> Digital Pin 53
+SCK       -> Digital Pin 52
+MOSI      -> Digital Pin 51
+MISO      -> Digital Pin 50
+IRQ       -> Not connected
+GND       -> GND
+RST       -> Digital Pin 49
+3.3V      -> 3.3V
+
+RFID MODULE 2 (MFRC522):
+-------------------------
+SDA (SS)  -> Digital Pin 48
+SCK       -> Digital Pin 52 (shared)
+MOSI      -> Digital Pin 51 (shared)
+MISO      -> Digital Pin 50 (shared)
+IRQ       -> Not connected
+GND       -> GND
+RST       -> Digital Pin 47
+3.3V      -> 3.3V
+
+RFID MODULE 3 (MFRC522):
+-------------------------
+SDA (SS)  -> Digital Pin 46
+SCK       -> Digital Pin 52 (shared)
+MOSI      -> Digital Pin 51 (shared)
+MISO      -> Digital Pin 50 (shared)
+IRQ       -> Not connected
+GND       -> GND
+RST       -> Digital Pin 45
+3.3V      -> 3.3V
+
+RFID MODULE 4 (MFRC522):
+-------------------------
+SDA (SS)  -> Digital Pin 44
+SCK       -> Digital Pin 52 (shared)
+MOSI      -> Digital Pin 51 (shared)
+MISO      -> Digital Pin 50 (shared)
+IRQ       -> Not connected
+GND       -> GND
+RST       -> Digital Pin 43
+3.3V      -> 3.3V
+
+STATUS LEDs (Common Cathode RGB or Separate LEDs):
+-------------------------------------------------
+Zone 1 RED LED    -> Digital Pin 22 (via 220 ohm resistor)
+Zone 1 GREEN LED  -> Digital Pin 23 (via 220 ohm resistor)
+Zone 1 BLUE LED   -> Digital Pin 24 (via 220 ohm resistor)
+
+Zone 2 RED LED    -> Digital Pin 25 (via 220 ohm resistor)
+Zone 2 GREEN LED  -> Digital Pin 26 (via 220 ohm resistor)
+Zone 2 BLUE LED   -> Digital Pin 27 (via 220 ohm resistor)
+
+Zone 3 RED LED    -> Digital Pin 28 (via 220 ohm resistor)
+Zone 3 GREEN LED  -> Digital Pin 29 (via 220 ohm resistor)
+Zone 3 BLUE LED   -> Digital Pin 30 (via 220 ohm resistor)
+
+Zone 4 RED LED    -> Digital Pin 31 (via 220 ohm resistor)
+Zone 4 GREEN LED  -> Digital Pin 32 (via 220 ohm resistor)
+Zone 4 BLUE LED   -> Digital Pin 33 (via 220 ohm resistor)
+
+RELAY MODULES (Active LOW, One for each zone):
+--------------------------------------------
+Zone 1 Relay IN   -> Digital Pin 34
+Zone 2 Relay IN   -> Digital Pin 35
+Zone 3 Relay IN   -> Digital Pin 36
+Zone 4 Relay IN   -> Digital Pin 37
+VCC              -> 5V
+GND              -> GND
+
+ETHERNET MODULE (W5100/W5500):
+-----------------------------
+MOSI      -> Digital Pin 51 (shared with RFID)
+MISO      -> Digital Pin 50 (shared with RFID)
+SCK       -> Digital Pin 52 (shared with RFID)
+SS        -> Digital Pin 10
+RESET     -> Digital Pin 9 (optional)
+VCC       -> 5V
+GND       -> GND
+
+ACTIVITY MONITORING (Current Sensors or Signal Inputs):
+-----------------------------------------------------
+Zone 1 Activity   -> Analog Pin A0
+Zone 2 Activity   -> Analog Pin A1
+Zone 3 Activity   -> Analog Pin A2
+Zone 4 Activity   -> Analog Pin A3
+
+BUZZER:
+------
+Buzzer Signal    -> Digital Pin 8
+GND              -> GND
+
+POWER SUPPLY:
+-----------
+Arduino Power    -> 9-12V DC, 1A or higher power supply
+
+NOTES:
+- All RFID modules share the same SPI bus (MOSI, MISO, SCK) but have different SS and RST pins
+- Each zone has its own RGB LED (or separate LEDs) for status indication
+- The activity monitoring inputs can be connected to current sensors, voltage signals, or simple switch contacts
+- Relays are used to control power to the machines or to enable their control circuits
+- The Ethernet module provides network communication to the central server
+- A buzzer provides audio feedback for card scans

@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('nodes') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i> Back to Nodes
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Add New Node</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('add_node') }}" method="POST">
+            <div class="mb-3">
+                <label for="node_id" class="form-label">Node ID (MAC Address or Unique Identifier)</label>
+                <input type="text" class="form-control" id="node_id" name="node_id" value="{{ node_id }}" required>
+                <div class="form-text">Unique identifier for this node. For ESP32 devices, this is usually the MAC address.</div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="name" class="form-label">Node Name</label>
+                <input type="text" class="form-control" id="name" name="name" value="{{ name }}" required>
+                <div class="form-text">A friendly name for this node (e.g., "Shop Floor Monitor 1").</div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="3">{{ description }}</textarea>
+                <div class="form-text">Optional description of this node and its purpose.</div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="ip_address" class="form-label">IP Address</label>
+                <input type="text" class="form-control" id="ip_address" name="ip_address" value="{{ ip_address }}">
+                <div class="form-text">Current IP address of the node. This may change if not using a static IP.</div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="node_type" class="form-label">Node Type</label>
+                <select class="form-select" id="node_type" name="node_type" required>
+                    <option value="machine_monitor" selected>Machine Monitor</option>
+                    <option value="office_reader">Office RFID Reader</option>
+                    <option value="accessory_io">Accessory IO Controller</option>
+                </select>
+                <div class="form-text">
+                    <ul>
+                        <li><strong>Machine Monitor:</strong> Controls access to machines via RFID readers</li>
+                        <li><strong>Office Reader:</strong> RFID registration point for office/administration</li>
+                        <li><strong>Accessory IO:</strong> Controls auxiliary equipment (lights, fans, etc.)</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="is_esp32" name="is_esp32" checked>
+                <label class="form-check-label" for="is_esp32">
+                    This is an ESP32 device
+                </label>
+                <div class="form-text">Check if this is an ESP32-based node (vs. Raspberry Pi or other device).</div>
+            </div>
+            
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i> Save Node
+                </button>
+                <a href="{{ url_for('nodes') }}" class="btn btn-outline-secondary">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
