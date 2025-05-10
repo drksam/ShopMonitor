@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}Areas{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">Areas</h1>
+        {% if is_admin %}
+        <a href="{{ url_for('areas.new_area') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> New Area
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Building Areas</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if areas %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Code</th>
+                            <th>Locations</th>
+                            <th>Machines</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for area in areas %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('areas.view_area', area_id=area.id) }}" class="text-decoration-none">
+                                    <strong>{{ area.name }}</strong>
+                                </a>
+                            </td>
+                            <td><code>{{ area.code }}</code></td>
+                            <td>{{ area.zones.count() }}</td>
+                            <td>{{ area.machine_count }}</td>
+                            <td>
+                                {% if area.active %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{{ url_for('areas.view_area', area_id=area.id) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    {% if is_admin %}
+                                    <a href="{{ url_for('areas.edit_area', area_id=area.id) }}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <a href="{{ url_for('areas.manage_permissions', area_id=area.id) }}" class="btn btn-sm btn-outline-info">
+                                        <i class="fas fa-users"></i> Permissions
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center p-4">
+                <p class="text-muted mb-0">No areas found.</p>
+                {% if is_admin %}
+                <a href="{{ url_for('areas.new_area') }}" class="btn btn-sm btn-primary mt-2">
+                    <i class="fas fa-plus"></i> Create First Area
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <h5>About Areas</h5>
+        <p class="text-muted">
+            Areas represent physical buildings or sections of your facility. Each area can contain multiple locations (zones), 
+            which in turn contain machines. This hierarchical organization helps manage large installations efficiently.
+        </p>
+    </div>
+</div>
+{% endblock %}

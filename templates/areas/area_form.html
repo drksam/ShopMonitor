@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}
+{% if area %}Edit Area: {{ area.name }}{% else %}New Area{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8 col-md-10 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        {% if area %}Edit Area: {{ area.name }}{% else %}Create New Area{% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {{ form.csrf_token }}
+                        
+                        <div class="mb-3">
+                            {{ form.name.label(class="form-label") }}
+                            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                            {% if form.name.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.name.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Name of the physical building or facility section.</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.code.label(class="form-label") }}
+                            {{ form.code(class="form-control" + (" is-invalid" if form.code.errors else ""), placeholder="e.g. MAIN, BLDG1") }}
+                            {% if form.code.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.code.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Short, unique code used for identification.</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.description.label(class="form-label") }}
+                            {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else ""), rows=3) }}
+                            {% if form.description.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.description.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Brief description of this area (optional).</small>
+                        </div>
+                        
+                        {% if area %}
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ form.active(class="form-check-input") }}
+                                {{ form.active.label(class="form-check-label") }}
+                                <small class="d-block text-muted">Inactive areas won't appear in dropdowns and reports.</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('areas.list_areas') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Areas
+                            </a>
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            {% if area %}
+            <div class="card mt-4 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Area Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-3 mb-md-0">
+                            <div class="h2">{{ area.zones.count() }}</div>
+                            <div class="text-muted">Locations</div>
+                        </div>
+                        <div class="col-md-4 text-center mb-3 mb-md-0">
+                            <div class="h2">{{ area.machine_count }}</div>
+                            <div class="text-muted">Machines</div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="h2">{{ area.nodes.count() }}</div>
+                            <div class="text-muted">Nodes</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

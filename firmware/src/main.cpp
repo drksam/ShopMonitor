@@ -10,7 +10,7 @@ const char* DASHBOARD_HTML = R"rawliteral(<!DOCTYPE html>
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NooyenUSA Node Configuration</title>
+  <title>Shop Node Configuration</title>
   <style>
     body { 
       font-family: Arial, sans-serif; 
@@ -174,7 +174,7 @@ const char* DASHBOARD_HTML = R"rawliteral(<!DOCTYPE html>
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">NooyenUSA Node Configuration</div>
+      <div class="logo">Shop Node Configuration</div>
     </div>
     
     <div class="status" id="statusBox">
@@ -313,7 +313,7 @@ const char* DASHBOARD_HTML = R"rawliteral(<!DOCTYPE html>
     </div>
     
     <div class="footer">
-      <p>ESP32 Multi-Function Node v1.0.0 | &copy; 2025 NooyenUSA</p>
+      <p>ESP32 Multi-Function Node v1.0.0 | &copy; 2025 Shop</p>
     </div>
   </div>
 
@@ -1094,7 +1094,7 @@ const char* WIRING_DIAGRAM_HTML = R"rawliteral(<!DOCTYPE html>
     </div>
     
     <div class="footer">
-      <p>ESP32 Multi-Function Node v1.0.0 | &copy; 2025 NooyenUSA</p>
+      <p>ESP32 Multi-Function Node v1.0.0 | &copy; 2025 Shop</p>
     </div>
   </div>
   

@@ -1,5 +1,5 @@
 /**
- * RFID Reader Testing Tool for NooyenUSATracker
+ * RFID Reader Testing Tool for Shop Suite
  * 
  * This JavaScript file provides a simple web-based interface for simulating
  * RFID tag scans for testing purposes. It allows administrators to:

@@ -1,13 +1,18 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+// Version information
+#define FIRMWARE_VERSION "1.0.1"
+#define SHOP_SUITE_VERSION "1.0.1"
+#define SHOP_MONITOR_VERSION "1.0.1"
+
 // Node types
 #define NODE_TYPE_MACHINE_MONITOR 0
 #define NODE_TYPE_OFFICE_READER 1
 #define NODE_TYPE_ACCESSORY_IO 2
 
 // Default configuration values
-#define DEFAULT_NODE_NAME "NooyenNode"
+#define DEFAULT_NODE_NAME "ShopNode"
 #define DEFAULT_SERVER_URL "http://192.168.1.100:5000"
 
 // Pin definitions for SPI RFID readers
@@ -63,12 +68,12 @@
 #define BUTTON2_PIN 17  // Using reset button as dual-purpose button
 
 // Network settings
-#define DEFAULT_AP_PASSWORD "Pigfloors"
+#define DEFAULT_AP_PASSWORD "ShopMonitor"
 #define AP_PASSWORD DEFAULT_AP_PASSWORD  // Alias for backward compatibility
 #define WIFI_CONNECTION_TIMEOUT 20000
 #define WIFI_TIMEOUT_SECONDS 20
-#define MDNS_SERVICE "_nooyen-node"
-#define MDNS_SERVICE_TYPE "_nooyen-node"
+#define MDNS_SERVICE "_shop-monitor"
+#define MDNS_SERVICE_TYPE "_shop-monitor"
 #define MAX_WIFI_SCAN_RESULTS 20
 
 // Server connection settings
@@ -80,7 +85,7 @@
 #define WEB_SERVER_PORT 80
 
 // EEPROM/Preferences settings
-#define CONFIG_NAMESPACE "nooyen"
+#define CONFIG_NAMESPACE "shopmonitor"
 #define PREFERENCES_NAMESPACE CONFIG_NAMESPACE  // Alias for backward compatibility
 
 // Maximum buffer sizes

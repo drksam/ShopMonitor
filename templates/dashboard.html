@@ -46,6 +46,44 @@
         font-size: 3rem;
         opacity: 0.2;
     }
+    /* Lead operator styles */
+    .lead-operator-badge {
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: rgba(255, 215, 0, 0.8);
+        color: #000;
+        padding: 2px 8px;
+        border-radius: 0 0 0 8px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+    .lead-operator-icon {
+        color: gold;
+        margin-right: 5px;
+    }
+    .sessions-count-badge {
+        position: absolute;
+        top: 0;
+        left: 0;
+        background: rgba(13, 110, 253, 0.8);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 0 0 8px 0;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+    .session-user-list {
+        max-height: 100px;
+        overflow-y: auto;
+        margin-top: 10px;
+        padding: 5px 0;
+    }
+    .session-user {
+        display: flex;
+        align-items: center;
+        padding: 2px 0;
+    }
 </style>
 {% endblock %}
 
@@ -163,11 +201,21 @@
         <div class="row machine-container">
             {% for machine in machines_by_zone[zone.id] %}
             <div class="col-md-3 mb-4" id="machine-{{ machine.machine_id }}">
-                <div class="card h-100 machine-card
+                <div class="card h-100 machine-card position-relative
                     {% if machine.status == 'active' %}border-success{% 
                     elif machine.status == 'warning' %}border-warning{% 
                     elif machine.status == 'offline' %}border-secondary{% 
                     else %}border-primary{% endif %}">
+                    {% if machine.current_user_count > 0 %}
+                    <span class="sessions-count-badge">
+                        <i class="fas fa-users"></i> {{ machine.current_user_count }}
+                    </span>
+                    {% endif %}
+                    {% if machine.has_lead_operator %}
+                    <span class="lead-operator-badge">
+                        <i class="fas fa-star lead-operator-icon"></i> LEAD
+                    </span>
+                    {% endif %}
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">
                             <span class="machine-status status-{{ machine.status }}"></span>
@@ -180,13 +228,23 @@
                             <i class="fas fa-info-circle me-2"></i>
                             Status: <span class="machine-status-text fw-bold">{{ machine.status|capitalize }}</span>
                         </p>
-                        {% if machine.current_user %}
-                        <p>
-                            <i class="fas fa-user me-2"></i>
-                            User: {{ machine.current_user.name }}
-                        </p>
+
+                        {% if machine.current_user_count > 0 %}
+                        <div class="session-user-list">
+                            {% for session in machine.current_users %}
+                            <div class="session-user">
+                                {% if session.is_lead %}
+                                <i class="fas fa-star lead-operator-icon"></i>
+                                {% else %}
+                                <i class="fas fa-user me-2"></i>
+                                {% endif %}
+                                {{ session.user.name }}
+                                <span class="ms-auto text-muted small">{{ session.login_time.strftime('%I:%M %p') }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
                         {% if machine.last_activity %}
-                        <p>
+                        <p class="mt-2">
                             <i class="fas fa-clock me-2"></i>
                             Last Activity: <span class="last-activity" 
                                                data-timestamp="{{ machine.last_activity.isoformat() }}">

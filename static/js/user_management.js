@@ -1,4 +1,4 @@
-// User Management functionality for NooyenUSATracker
+// User Management functionality for Shop Suite
 
 document.addEventListener('DOMContentLoaded', function() {
     // Event handlers for edit RFID user modal

@@ -1,0 +1,12 @@
+suite structure
+ShopTracker (the office side)
+ShopMonitor (this app)
+Database
+More to come
+
+
+this app is the real world interface structure for a suite of manufacturing management apps
+this app provides the suite with data and statistics about manufacturing area, location, machine items
+the app ShopTracker will be the primary way users access this app
+-we need to ensure that our user permissions are Synchronized across the suite.
+-when a user that is logged into ShopTracker navigates to a page on this app they should be automatically logged in.

@@ -7,7 +7,7 @@
 #define NODE_TYPE_ACCESSORY_IO 2
 
 // Default configuration values
-#define DEFAULT_NODE_NAME "NooyenNode"
+#define DEFAULT_NODE_NAME "ShopNode"
 #define DEFAULT_SERVER_URL "http://192.168.1.100:5000"
 
 // Pin definitions for SPI RFID readers
@@ -67,8 +67,8 @@
 #define AP_PASSWORD DEFAULT_AP_PASSWORD  // Alias for backward compatibility
 #define WIFI_CONNECTION_TIMEOUT 20000
 #define WIFI_TIMEOUT_SECONDS 20
-#define MDNS_SERVICE "_nooyen-node"
-#define MDNS_SERVICE_TYPE "_nooyen-node"
+#define MDNS_SERVICE "_Shop-node"
+#define MDNS_SERVICE_TYPE "_Shop-node"
 #define MAX_WIFI_SCAN_RESULTS 20
 
 // Server connection settings
@@ -80,7 +80,7 @@
 #define WEB_SERVER_PORT 80
 
 // EEPROM/Preferences settings
-#define CONFIG_NAMESPACE "nooyen"
+#define CONFIG_NAMESPACE "Shop"
 #define PREFERENCES_NAMESPACE CONFIG_NAMESPACE  // Alias for backward compatibility
 
 // Maximum buffer sizes

@@ -18,18 +18,90 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     role_id = db.Column(db.Integer, db.ForeignKey('role.id'))
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    
+    # Area permissions - many-to-many relationship
+    area_permissions = db.relationship('AreaPermission', backref='user', lazy='dynamic')
+    
+    def has_area_permission(self, area_id):
+        """Check if user has access to a specific area
+        
+        Args:
+            area_id: Integer ID of the area to check
+            
+        Returns:
+            bool: True if user has access to this area
+        """
+        # Check if user has admin role
+        if self.role and self.role.name == "admin":
+            return True
+            
+        # Check for specific area permission
+        permission = AreaPermission.query.filter_by(
+            user_id=self.id, 
+            area_id=area_id
+        ).first()
+        
+        return permission is not None
 
-# Location model for organizing machines
+# Area model for building-level organization (top level in hierarchy)
+class Area(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), nullable=False)
+    description = db.Column(db.String(255))
+    code = db.Column(db.String(10), unique=True, nullable=False)  # Short code for area
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    
+    # Relationships
+    zones = db.relationship('Zone', backref='area', lazy='dynamic')
+    user_permissions = db.relationship('AreaPermission', backref='area', lazy='dynamic')
+    
+    @property
+    def machine_count(self):
+        """Get total number of machines in this area"""
+        count = 0
+        for zone in self.zones:
+            count += zone.machines.count()
+        return count
+    
+    @property
+    def active_zones(self):
+        """Get count of active zones in this area"""
+        return self.zones.filter_by(active=True).count()
+
+# Area permissions for users
+class AreaPermission(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    area_id = db.Column(db.Integer, db.ForeignKey('area.id'), nullable=False)
+    permission_level = db.Column(db.String(20), default="view")  # view, operate, manage, admin
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    
+    # Unique constraint to prevent duplicate permissions
+    __table_args__ = (db.UniqueConstraint('user_id', 'area_id'),)
+
+# Location model (previously Zone) for organizing machines within an area
 class Zone(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), nullable=False)
     description = db.Column(db.String(255))
+    area_id = db.Column(db.Integer, db.ForeignKey('area.id'))  # Link to parent area
+    code = db.Column(db.String(10))  # Short code for zone/location
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     machines = db.relationship('Machine', backref='zone', lazy='dynamic')
     
     # Rename the display for clarity
     @property
     def display_name(self):
         return f"{self.name} Location"
+    
+    @property
+    def full_code(self):
+        """Get hierarchical code including area code"""
+        if self.area:
+            return f"{self.area.code}-{self.code}"
+        return self.code
 
 # Node model for managing devices (ESP32/Arduino controllers)
 class Node(db.Model):
@@ -38,14 +110,21 @@ class Node(db.Model):
     name = db.Column(db.String(64), nullable=False)
     description = db.Column(db.String(255))
     ip_address = db.Column(db.String(15))  # IP address of the node
-    node_type = db.Column(db.String(20), default="machine_monitor")  # machine_monitor, accessory_io
+    node_type = db.Column(db.String(20), default="machine_monitor")  # machine_monitor, office_reader, accessory_io, location_display, machine_display, area_controller
     is_esp32 = db.Column(db.Boolean, default=False)  # ESP32 or Arduino
+    has_display = db.Column(db.Boolean, default=False)  # Whether node has CYD display
+    area_id = db.Column(db.Integer, db.ForeignKey('area.id'), nullable=True)  # Area this node belongs to
+    zone_id = db.Column(db.Integer, db.ForeignKey('zone.id'), nullable=True)  # Zone this node belongs to
     last_seen = db.Column(db.DateTime)
     firmware_version = db.Column(db.String(20))
     config = db.Column(db.Text)  # JSON configuration
     
     # Get connected machines
     machines = db.relationship('Machine', backref='node', lazy='dynamic')
+    
+    # Add relationships for area and zone
+    area = db.relationship('Area', backref=db.backref('nodes', lazy='dynamic'))
+    zone_rel = db.relationship('Zone', backref=db.backref('nodes', lazy='dynamic'))
     
     # Helper methods
     def get_config_dict(self):
@@ -77,12 +156,18 @@ class Node(db.Model):
             return "online"
         
         return "offline"
-
+    
+    @property
+    def location_hierarchy(self):
+        """Get formatted string of area and zone"""
+        area_name = self.area.name if self.area else "Unassigned"
+        zone_name = self.zone_rel.name if self.zone_rel else "Unassigned"
+        return f"{area_name} / {zone_name}"
 
 # Machine model for tracking equipment
 class Machine(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    machine_id = db.Column(db.String(2), unique=True, nullable=False)  # 2-digit machine ID
+    machine_id = db.Column(db.String(10), unique=True, nullable=False)  # Machine ID (expanded from 2 digits)
     name = db.Column(db.String(64), nullable=False)
     description = db.Column(db.String(255))
     zone_id = db.Column(db.Integer, db.ForeignKey('zone.id'))
@@ -90,7 +175,9 @@ class Machine(db.Model):
     node_id = db.Column(db.Integer, db.ForeignKey('node.id'))  # Node that controls this machine
     node_port = db.Column(db.Integer, default=0)  # Port/Zone on the node (0-3)
     status = db.Column(db.String(20), default="idle")  # idle, active, warning, offline
-    current_user_id = db.Column(db.Integer, db.ForeignKey('rfid_user.id'), nullable=True)
+    current_users = db.relationship('MachineSession', backref='machine', lazy='dynamic', 
+                                   primaryjoin="and_(Machine.id==MachineSession.machine_id, MachineSession.logout_time==None)")
+    lead_operator_id = db.Column(db.Integer, db.ForeignKey('rfid_user.id'), nullable=True)
     last_activity = db.Column(db.DateTime)
     logs = db.relationship('MachineLog', backref='machine', lazy='dynamic')
     
@@ -118,7 +205,46 @@ class Machine(db.Model):
         if self.zone_id and self.zone:
             return self.zone.name
         return "Unassigned"
+    
+    @property
+    def area_name(self):
+        """Get the area name safely"""
+        if self.zone_id and self.zone and self.zone.area:
+            return self.zone.area.name
+        return "Unassigned"
+    
+    @property
+    def has_lead_operator(self):
+        """Check if machine has a lead operator assigned"""
+        return self.lead_operator_id is not None
+    
+    @property
+    def current_user_count(self):
+        """Get the number of users currently logged in"""
+        return self.current_users.count()
+    
+    @property
+    def hierarchical_id(self):
+        """Get hierarchical machine ID including area and zone codes"""
+        if self.zone and self.zone.area:
+            return f"{self.zone.area.code}-{self.zone.code}-{self.machine_id}"
+        elif self.zone:
+            return f"{self.zone.code}-{self.machine_id}"
+        return self.machine_id
 
+# Machine Session model for tracking active users on machines
+class MachineSession(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    machine_id = db.Column(db.Integer, db.ForeignKey('machine.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('rfid_user.id'), nullable=False)
+    is_lead = db.Column(db.Boolean, default=False)  # Whether this user is the lead operator
+    login_time = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    logout_time = db.Column(db.DateTime, nullable=True)
+    rework_qty = db.Column(db.Integer, default=0)  # Quantity of rework reported
+    scrap_qty = db.Column(db.Integer, default=0)   # Quantity of scrap reported
+    
+    # Relationships
+    user = db.relationship('RFIDUser', backref=db.backref('sessions', lazy='dynamic'))
 
 # RFID User model (different from admin users)
 class RFIDUser(db.Model):
@@ -129,12 +255,13 @@ class RFIDUser(db.Model):
     active = db.Column(db.Boolean, default=True)
     is_offline_access = db.Column(db.Boolean, default=False)  # For emergency offline access
     is_admin_override = db.Column(db.Boolean, default=False)  # For admin override access
-    external_id = db.Column(db.Integer)  # ID in NooyenUSATracker system, for synchronization
-    last_synced = db.Column(db.DateTime)  # Last time this user was synced with NooyenUSATracker
+    can_be_lead = db.Column(db.Boolean, default=False)  # Whether user can be assigned as lead operator
+    external_id = db.Column(db.Integer)  # ID in ShopTracker system, for synchronization
+    last_synced = db.Column(db.DateTime)  # Last time this user was synced with ShopTracker
     authorized_machines = db.relationship('MachineAuthorization', backref='user', lazy='dynamic')
     logs = db.relationship('MachineLog', backref='user', lazy='dynamic')
-    current_machine = db.relationship('Machine', backref='current_user', uselist=False, 
-                                     foreign_keys=[Machine.current_user_id])
+    lead_machines = db.relationship('Machine', backref='lead_operator', 
+                                   foreign_keys=[Machine.lead_operator_id])
     
     def has_machine_access(self, machine_id):
         """Check if user has access to a specific machine
@@ -169,18 +296,57 @@ class RFIDUser(db.Model):
             
         # Otherwise return specifically authorized machines
         return [auth.machine_id for auth in self.authorized_machines]
-
+    
+    @property
+    def active_sessions(self):
+        """Get list of active sessions for this user"""
+        return MachineSession.query.filter_by(
+            user_id=self.id,
+            logout_time=None
+        ).all()
+    
+    @property
+    def active_session_count(self):
+        """Get count of active sessions for this user"""
+        return MachineSession.query.filter_by(
+            user_id=self.id,
+            logout_time=None
+        ).count()
+    
+    @property
+    def active_lead_sessions(self):
+        """Get list of active sessions where user is lead operator"""
+        return MachineSession.query.filter_by(
+            user_id=self.id,
+            logout_time=None,
+            is_lead=True
+        ).all()
 
 # Machine authorization model
 class MachineAuthorization(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('rfid_user.id'), nullable=False)
     machine_id = db.Column(db.Integer, db.ForeignKey('machine.id'), nullable=False)
+    can_be_lead = db.Column(db.Boolean, default=False)  # Whether user can be lead operator on this machine
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     
     # Add a unique constraint to prevent duplicate authorizations
     __table_args__ = (db.UniqueConstraint('user_id', 'machine_id'),)
 
+# Lead Operator History for tracking lead changes
+class LeadOperatorHistory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    machine_id = db.Column(db.Integer, db.ForeignKey('machine.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('rfid_user.id'), nullable=False)
+    assigned_time = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    removed_time = db.Column(db.DateTime, nullable=True)
+    assigned_by_id = db.Column(db.Integer, db.ForeignKey('rfid_user.id'), nullable=True)
+    removal_reason = db.Column(db.String(20), nullable=True)  # logout, transfer, override, system
+    
+    # Relationships
+    machine = db.relationship('Machine', foreign_keys=[machine_id])
+    user = db.relationship('RFIDUser', foreign_keys=[user_id])
+    assigned_by = db.relationship('RFIDUser', foreign_keys=[assigned_by_id])
 
 # Accessory I/O model for external devices
 class AccessoryIO(db.Model):
@@ -215,7 +381,6 @@ class AccessoryIO(db.Model):
             return self.linked_machine.name
         return "None"
 
-
 # Machine usage log
 class MachineLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -225,19 +390,51 @@ class MachineLog(db.Model):
     logout_time = db.Column(db.DateTime, nullable=True)
     total_time = db.Column(db.Integer, nullable=True)  # Total time in seconds
     status = db.Column(db.String(20), default="active")  # active, completed, timeout, error
+    was_lead = db.Column(db.Boolean, default=False)  # Whether user was lead operator
+    rework_qty = db.Column(db.Integer, default=0)  # Quantity of rework reported
+    scrap_qty = db.Column(db.Integer, default=0)   # Quantity of scrap reported
 
+# E-STOP events for tracking emergency stops
+class EStopEvent(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    area_id = db.Column(db.Integer, db.ForeignKey('area.id'), nullable=True)
+    zone_id = db.Column(db.Integer, db.ForeignKey('zone.id'), nullable=True)
+    node_id = db.Column(db.Integer, db.ForeignKey('node.id'), nullable=True)
+    trigger_time = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    reset_time = db.Column(db.DateTime, nullable=True)
+    triggered_by = db.Column(db.String(64))  # Node that triggered the E-STOP
+    reset_by = db.Column(db.String(64), nullable=True)  # User or node that reset the E-STOP
+    affected_machines = db.Column(db.Text)  # JSON list of affected machine IDs
+    
+    # Relationships
+    area = db.relationship('Area', backref=db.backref('estop_events', lazy='dynamic'))
+    zone = db.relationship('Zone', backref=db.backref('estop_events', lazy='dynamic'))
+    node = db.relationship('Node', backref=db.backref('estop_events', lazy='dynamic'))
+    
+    @property
+    def duration_seconds(self):
+        """Get duration of E-STOP in seconds"""
+        if not self.reset_time:
+            return (datetime.datetime.utcnow() - self.trigger_time).total_seconds()
+        return (self.reset_time - self.trigger_time).total_seconds()
+    
+    @property
+    def is_active(self):
+        """Check if E-STOP is still active"""
+        return self.reset_time is None
 
-# Alert system for bidirectional communication with NooyenUSATracker
+# Alert system for bidirectional communication with ShopTracker
 class Alert(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    external_id = db.Column(db.Integer, nullable=True)  # ID from NooyenUSATracker
+    external_id = db.Column(db.Integer, nullable=True)  # ID from ShopTracker
+    area_id = db.Column(db.Integer, db.ForeignKey('area.id'), nullable=True)  # New field for area
     machine_id = db.Column(db.Integer, db.ForeignKey('machine.id'), nullable=True)
     node_id = db.Column(db.Integer, db.ForeignKey('node.id'), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('rfid_user.id'), nullable=True)
     message = db.Column(db.String(255), nullable=False)
-    alert_type = db.Column(db.String(20), nullable=False)  # warning, error, info, maintenance
+    alert_type = db.Column(db.String(20), nullable=False)  # warning, error, info, maintenance, estop
     status = db.Column(db.String(20), default="pending")  # pending, acknowledged, resolved
-    origin = db.Column(db.String(20), nullable=False)  # machine, user, system, nooyen_tracker
+    origin = db.Column(db.String(20), nullable=False)  # machine, user, system, Shop_tracker
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     acknowledged_at = db.Column(db.DateTime, nullable=True)
     resolved_at = db.Column(db.DateTime, nullable=True)
@@ -245,6 +442,7 @@ class Alert(db.Model):
     resolved_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     
     # Relationships
+    area = db.relationship('Area', backref=db.backref('alerts', lazy='dynamic'))
     machine = db.relationship('Machine', backref=db.backref('alerts', lazy='dynamic'))
     node = db.relationship('Node', backref=db.backref('alerts', lazy='dynamic'))
     user = db.relationship('RFIDUser', backref=db.backref('alerts', lazy='dynamic'))
@@ -256,6 +454,8 @@ class Alert(db.Model):
         return {
             'id': self.id,
             'external_id': self.external_id,
+            'area_id': self.area_id,
+            'area_name': self.area.name if self.area else None,
             'machine_id': self.machine.machine_id if self.machine else None,
             'machine_name': self.machine.name if self.machine else None,
             'node_id': self.node.node_id if self.node else None,
@@ -270,3 +470,16 @@ class Alert(db.Model):
             'acknowledged_at': self.acknowledged_at.isoformat() + 'Z' if self.acknowledged_at else None,
             'resolved_at': self.resolved_at.isoformat() + 'Z' if self.resolved_at else None
         }
+
+# Bluetooth Audio Device for CYD nodes
+class BluetoothDevice(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    node_id = db.Column(db.Integer, db.ForeignKey('node.id'), nullable=False)
+    device_name = db.Column(db.String(64), nullable=False)
+    mac_address = db.Column(db.String(17), unique=True, nullable=False)
+    last_connected = db.Column(db.DateTime, nullable=True)
+    is_paired = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(20), default="disconnected")  # connected, disconnected, pairing
+    
+    # Relationships
+    node = db.relationship('Node', backref=db.backref('bluetooth_devices', lazy='dynamic'))

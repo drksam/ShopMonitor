@@ -904,7 +904,7 @@ const char* wiring_diagram_html = R"rawliteral(
     </div>
     
     <div class="footer">
-      <p>NooyenUSA ESP32 Multi-Function Node v1.0.0 | &copy; 2025</p>
+      <p>Shop ESP32 Multi-Function Node v1.0.0 | &copy; 2025</p>
     </div>
   </div>
 </body>

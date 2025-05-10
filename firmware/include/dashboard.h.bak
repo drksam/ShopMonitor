@@ -10,7 +10,7 @@ extern const char* DASHBOARD_HTML;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nooyen RFID Node Configuration</title>
+    <title>Shop RFID Node Configuration</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -283,7 +283,7 @@ extern const char* DASHBOARD_HTML;
     </style>
 </head>
 <body>
-    <h1>Nooyen RFID Node Configuration</h1>
+    <h1>Shop RFID Node Configuration</h1>
     
     <div id="notification" class="alert hidden">
         <span class="close-btn" onclick="this.parentElement.style.display='none';">&times;</span>
@@ -434,7 +434,7 @@ extern const char* DASHBOARD_HTML;
                 <h3>Basic Configuration</h3>
                 <div>
                     <label for="node-name-input">Node Name:</label>
-                    <input type="text" id="node-name-input" name="nodeName" placeholder="e.g., NooyenNode1">
+                    <input type="text" id="node-name-input" name="nodeName" placeholder="e.g., ShopNode1">
                 </div>
                 
                 <div>

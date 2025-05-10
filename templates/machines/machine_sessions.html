@@ -1,0 +1,448 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ machine.name }} - Active Sessions{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('machines.list_machines') }}">Machines</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('machines.view_machine', machine_id=machine.id) }}">{{ machine.name }}</a></li>
+            <li class="breadcrumb-item active">Sessions</li>
+        </ol>
+    </nav>
+    
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1>
+                    <i class="fas fa-users me-2"></i>
+                    {{ machine.name }} - Active Sessions
+                </h1>
+                <div>
+                    <a href="{{ url_for('machine_sessions.login_to_machine', machine_id=machine.id) }}" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt me-1"></i> Log In User
+                    </a>
+                    {% if is_admin or (machine.zone and machine.zone.area and current_user.has_area_permission(machine.zone.area.id, 'manage')) %}
+                    <a href="{{ url_for('machine_sessions.assign_lead_operator', machine_id=machine.id) }}" class="btn btn-secondary ms-2">
+                        <i class="fas fa-user-hard-hat me-1"></i> Assign Lead
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-4 order-md-2">
+            <!-- Machine Info Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Machine Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3 text-center">
+                        <span class="badge bg-primary fs-5">{{ machine.hierarchical_id }}</span>
+                    </div>
+                    
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Status</dt>
+                        <dd class="col-sm-8">
+                            {% if machine.status == 'idle' %}
+                            <span class="badge bg-secondary">Idle</span>
+                            {% elif machine.status == 'active' %}
+                            <span class="badge bg-success">Active</span>
+                            {% elif machine.status == 'warning' %}
+                            <span class="badge bg-warning text-dark">Warning</span>
+                            {% elif machine.status == 'offline' %}
+                            <span class="badge bg-danger">Offline</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ machine.status }}</span>
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Lead Operator</dt>
+                        <dd class="col-sm-8">
+                            {% if machine.lead_operator %}
+                            <span class="badge bg-primary">{{ machine.lead_operator.name }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">None</span>
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Location</dt>
+                        <dd class="col-sm-8">
+                            {% if machine.zone %}
+                            <a href="{{ url_for('zones.view_zone', zone_id=machine.zone.id) }}" class="text-decoration-none">
+                                {{ machine.zone.name }}
+                            </a>
+                            {% else %}
+                            <span class="text-muted">Unassigned</span>
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Area</dt>
+                        <dd class="col-sm-8">
+                            {% if machine.zone and machine.zone.area %}
+                            <a href="{{ url_for('areas.view_area', area_id=machine.zone.area.id) }}" class="text-decoration-none">
+                                {{ machine.zone.area.name }}
+                            </a>
+                            {% else %}
+                            <span class="text-muted">Unassigned</span>
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+                <div class="card-footer">
+                    <div class="d-grid">
+                        <a href="{{ url_for('machines.view_machine', machine_id=machine.id) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-info-circle me-1"></i> View Machine Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Your Session Card (if logged in) -->
+            {% if current_user_session %}
+            <div class="card shadow-sm mb-4 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-check me-2"></i>
+                        Your Active Session
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3 text-center">
+                        {% if current_user_session.is_lead %}
+                        <div class="badge bg-warning text-dark mb-2 py-2 px-3">
+                            <i class="fas fa-star me-1"></i> Lead Operator
+                        </div>
+                        {% endif %}
+                        <p>You've been logged in for:</p>
+                        <div class="fs-3" id="session-timer">
+                            <span class="session-time" data-login-time="{{ current_user_session.login_time.isoformat() }}">
+                                Calculating...
+                            </span>
+                        </div>
+                    </div>
+
+                    <form method="post" action="{{ url_for('machine_sessions.logout_from_machine', machine_id=machine.id, session_id=current_user_session.id) }}" class="quality-form">
+                        <h6 class="mb-3">Quality Report (Optional)</h6>
+                        
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label for="rework_qty" class="form-label">Rework Qty</label>
+                                <input type="number" class="form-control" name="rework_qty" id="rework_qty" value="0" min="0">
+                            </div>
+                            <div class="col-6">
+                                <label for="scrap_qty" class="form-label">Scrap Qty</label>
+                                <input type="number" class="form-control" name="scrap_qty" id="scrap_qty" value="0" min="0">
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-sign-out-alt me-1"></i> Log Out
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="col-md-8 order-md-1">
+            <!-- Machine Start Status Alert -->
+            <div id="machine-status-alert" class="mb-4">
+                <!-- Will be populated by JavaScript -->
+            </div>
+            
+            <!-- Active Sessions Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        Active Sessions ({{ active_sessions|length }})
+                    </h5>
+                </div>
+                
+                {% if active_sessions %}
+                <div class="list-group list-group-flush">
+                    {% for session in active_sessions %}
+                    <div class="list-group-item list-group-item-action {% if session.is_lead %}bg-light{% endif %}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-bold">{{ session.user.name }}</div>
+                                <div class="small text-muted">
+                                    Logged in: 
+                                    <span class="session-time" data-login-time="{{ session.login_time.isoformat() }}">
+                                        {{ session.login_time.strftime('%H:%M:%S') }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                {% if session.is_lead %}
+                                <span class="badge bg-warning text-dark me-3">
+                                    <i class="fas fa-star me-1"></i> Lead
+                                </span>
+                                {% endif %}
+                                
+                                {% if is_admin or (machine.zone and machine.zone.area and current_user.has_area_permission(machine.zone.area.id, 'manage')) or session.user_id == current_user.id %}
+                                <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#logoutModal{{ session.id }}">
+                                    <i class="fas fa-sign-out-alt"></i> Log Out
+                                </button>
+                                
+                                <!-- Log Out Modal -->
+                                <div class="modal fade" id="logoutModal{{ session.id }}" tabindex="-1" aria-labelledby="logoutModalLabel{{ session.id }}" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="logoutModalLabel{{ session.id }}">Log Out {{ session.user.name }}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form method="post" action="{{ url_for('machine_sessions.logout_from_machine', machine_id=machine.id, session_id=session.id) }}">
+                                                <div class="modal-body">
+                                                    <p>Are you sure you want to log out {{ session.user.name }} from this machine?</p>
+                                                    
+                                                    <h6 class="mb-3">Quality Report (Optional)</h6>
+                                                    <div class="row g-2 mb-3">
+                                                        <div class="col-6">
+                                                            <label for="rework_qty_{{ session.id }}" class="form-label">Rework Qty</label>
+                                                            <input type="number" class="form-control" name="rework_qty" id="rework_qty_{{ session.id }}" value="0" min="0">
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <label for="scrap_qty_{{ session.id }}" class="form-label">Scrap Qty</label>
+                                                            <input type="number" class="form-control" name="scrap_qty" id="scrap_qty_{{ session.id }}" value="0" min="0">
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {% if session.is_lead %}
+                                                    <div class="alert alert-warning">
+                                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                                        This will remove the user as lead operator.
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-danger">
+                                                        <i class="fas fa-sign-out-alt me-1"></i> Confirm Log Out
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="card-body">
+                    <div class="text-center py-4">
+                        <div class="display-1 text-muted mb-3">
+                            <i class="fas fa-users-slash"></i>
+                        </div>
+                        <p class="lead">No active users on this machine</p>
+                        <a href="{{ url_for('machine_sessions.login_to_machine', machine_id=machine.id) }}" class="btn btn-primary mt-2">
+                            <i class="fas fa-sign-in-alt me-2"></i> Log In
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Recent Sessions Card -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        Recent Sessions
+                    </h5>
+                </div>
+                
+                {% if recent_sessions %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Duration</th>
+                                <th>Logged Out</th>
+                                <th>Quality Data</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in recent_sessions %}
+                            <tr>
+                                <td>
+                                    {{ session.user.name }}
+                                    {% if session.is_lead %}
+                                    <span class="badge bg-warning text-dark ms-1">
+                                        <i class="fas fa-star"></i> Lead
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if session.logout_time %}
+                                    {% set duration = (session.logout_time - session.login_time).total_seconds() %}
+                                    {% set hours = (duration / 3600)|int %}
+                                    {% set minutes = ((duration % 3600) / 60)|int %}
+                                    {% if hours > 0 %}
+                                    {{ hours }}h {{ minutes }}m
+                                    {% else %}
+                                    {{ minutes }}m {{ (duration % 60)|int }}s
+                                    {% endif %}
+                                    {% else %}
+                                    Active
+                                    {% endif %}
+                                </td>
+                                <td>{{ session.logout_time.strftime('%H:%M:%S') if session.logout_time else "Active" }}</td>
+                                <td>
+                                    {% if session.rework_qty or session.scrap_qty %}
+                                    <span class="text-danger" title="Scrap Quantity">
+                                        <i class="fas fa-times-circle"></i> {{ session.scrap_qty or 0 }}
+                                    </span>
+                                    <span class="text-warning ms-2" title="Rework Quantity">
+                                        <i class="fas fa-redo"></i> {{ session.rework_qty or 0 }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">None reported</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="card-body">
+                    <p class="text-muted text-center">No recent session history</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Function to update session times
+    function updateSessionTimes() {
+        document.querySelectorAll('.session-time').forEach(function(element) {
+            const loginTime = new Date(element.dataset.loginTime);
+            const now = new Date();
+            const diff = Math.floor((now - loginTime) / 1000); // difference in seconds
+            
+            const hours = Math.floor(diff / 3600);
+            const minutes = Math.floor((diff % 3600) / 60);
+            const seconds = diff % 60;
+            
+            let timeString = '';
+            if (hours > 0) {
+                timeString = `${hours}h ${minutes}m ${seconds}s`;
+            } else if (minutes > 0) {
+                timeString = `${minutes}m ${seconds}s`;
+            } else {
+                timeString = `${seconds}s`;
+            }
+            
+            element.textContent = timeString;
+        });
+    }
+    
+    // Function to check machine start status
+    function checkMachineStartStatus() {
+        fetch(`/api/machines/{{ machine.id }}/can_start`)
+            .then(response => response.json())
+            .then(data => {
+                const alertContainer = document.getElementById('machine-status-alert');
+                
+                if (data.can_start) {
+                    // Machine can start - has lead operator
+                    alertContainer.innerHTML = `
+                        <div class="alert alert-success d-flex align-items-center" role="alert">
+                            <i class="fas fa-check-circle me-3 fs-4"></i>
+                            <div>
+                                <strong>Machine Ready</strong>: A lead operator is present. The machine can be started.
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Machine cannot start - no lead operator
+                    let eligibleLeadsHtml = '';
+                    if (data.eligible_leads && data.eligible_leads.length > 0) {
+                        eligibleLeadsHtml = `
+                            <div class="mt-2">
+                                <strong>Eligible lead operators:</strong>
+                                <ul class="mb-0">
+                                    ${data.eligible_leads.map(user => `<li>${user.name}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    }
+                    
+                    alertContainer.innerHTML = `
+                        <div class="alert alert-danger d-flex" role="alert">
+                            <div class="me-3 fs-3">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div>
+                                <h5>Machine Locked</h5>
+                                <p class="mb-1">This machine cannot start without a lead operator present.</p>
+                                <p class="mb-1">Please assign a lead operator to enable machine operation.</p>
+                                <div class="d-flex mt-2">
+                                    <a href="{{ url_for('machine_sessions.assign_lead_operator', machine_id=machine.id) }}" class="btn btn-warning me-2">
+                                        <i class="fas fa-user-check me-1"></i> Assign Lead Operator
+                                    </a>
+                                    <a href="{{ url_for('machine_sessions.login_to_machine', machine_id=machine.id) }}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-sign-in-alt me-1"></i> Log In User
+                                    </a>
+                                </div>
+                                ${eligibleLeadsHtml}
+                            </div>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error checking machine status:', error);
+                const alertContainer = document.getElementById('machine-status-alert');
+                alertContainer.innerHTML = `
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Unable to check machine start status. Please refresh the page.
+                    </div>
+                `;
+            });
+    }
+    
+    // Update times immediately and periodically
+    updateSessionTimes();
+    setInterval(updateSessionTimes, 1000);
+    
+    // Check machine status immediately and periodically
+    checkMachineStartStatus();
+    setInterval(checkMachineStartStatus, 30000); // Check every 30 seconds
+    
+    // Add lead transfer capabilities if current user is the lead
+    const userSession = document.querySelector('#session-timer');
+    if (userSession && userSession.parentElement.querySelector('.badge.bg-warning')) {
+        // Current user is lead operator, add transfer option
+        const transferBtn = document.createElement('button');
+        transferBtn.className = 'btn btn-outline-warning mt-3';
+        transferBtn.innerHTML = '<i class="fas fa-exchange-alt me-2"></i> Transfer Lead Operator Role';
+        transferBtn.addEventListener('click', function() {
+            // Implement lead transfer modal or redirect to transfer page
+            window.location.href = '{{ url_for("machine_sessions.assign_lead_operator", machine_id=machine.id) }}';
+        });
+        userSession.parentElement.appendChild(transferBtn);
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

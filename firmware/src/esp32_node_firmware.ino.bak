@@ -75,7 +75,7 @@
 bool isConfigured = false;
 bool wifiConnected = false;
 int nodeType = NODE_TYPE_MACHINE_MONITOR;
-String nodeName = "NooyenNode";
+String nodeName = "ShopNode";
 String serverUrl = "http://server:5000";
 String wifiSSID = "";
 String wifiPassword = "";
@@ -279,8 +279,8 @@ void startAPMode() {
   // Start AP mode
   apMode = true;
   WiFi.mode(WIFI_AP);
-  String apName = "NooyenNode_" + String((uint32_t)ESP.getEfuseMac(), HEX);
-  WiFi.softAP(apName.c_str(), "nooyen123");
+  String apName = "ShopNode_" + String((uint32_t)ESP.getEfuseMac(), HEX);
+  WiFi.softAP(apName.c_str(), "Shop123");
   Serial.println("AP Mode started.");
   Serial.print("AP SSID: ");
   Serial.println(apName);
@@ -300,7 +300,7 @@ void setupMDNS() {
       
       // Add service to mDNS
       MDNS.addService("http", "tcp", 80);
-      MDNS.addService("nooyen", "tcp", 80);
+      MDNS.addService("Shop", "tcp", 80);
     } else {
       Serial.println("Error setting up mDNS responder!");
     }
@@ -485,10 +485,10 @@ void handleStatus() {
 bool loadConfig() {
   // Load configuration from EEPROM
   Preferences preferences;
-  preferences.begin("nooyenNode", false);
+  preferences.begin("ShopNode", false);
   
   if (preferences.isKey("configured")) {
-    nodeName = preferences.getString("nodeName", "NooyenNode");
+    nodeName = preferences.getString("nodeName", "ShopNode");
     nodeType = preferences.getInt("nodeType", NODE_TYPE_MACHINE_MONITOR);
     serverUrl = preferences.getString("serverUrl", "http://server:5000");
     wifiSSID = preferences.getString("wifiSSID", "");
@@ -510,7 +510,7 @@ bool loadConfig() {
 bool saveConfig() {
   // Save configuration to EEPROM
   Preferences preferences;
-  preferences.begin("nooyenNode", false);
+  preferences.begin("ShopNode", false);
   
   preferences.putBool("configured", true);
   preferences.putString("nodeName", nodeName);
@@ -531,11 +531,11 @@ bool saveConfig() {
 void resetConfig() {
   // Reset configuration to defaults
   Preferences preferences;
-  preferences.begin("nooyenNode", false);
+  preferences.begin("ShopNode", false);
   preferences.clear();
   preferences.end();
   
-  nodeName = "NooyenNode";
+  nodeName = "ShopNode";
   nodeType = NODE_TYPE_MACHINE_MONITOR;
   serverUrl = "http://server:5000";
   wifiSSID = "";

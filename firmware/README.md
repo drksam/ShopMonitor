@@ -1,6 +1,6 @@
 # ESP32 Multi-Function Node Firmware
 
-This firmware is designed for ESP32 DevKit V1 boards to create modular IoT nodes for the NooyenUSA Machine Monitoring System, with multiple operating modes and seamless web configuration.
+This firmware is designed for ESP32 DevKit V1 boards to create modular IoT nodes for the ShopMonitoring System, with multiple operating modes and seamless web configuration.
 
 ## Hardware Requirements
 
@@ -69,9 +69,9 @@ platformio device monitor
 
 ### First Time Setup
 
-When first powered on, the ESP32 will create a WiFi access point named "NooyenNode_XXXXXX".
+When first powered on, the ESP32 will create a WiFi access point named "ShopNode_XXXXXX".
 
-1. Connect to this WiFi network (password: nooyen123)
+1. Connect to this WiFi network (password: Shop123)
 2. Open a web browser and navigate to http://192.168.4.1
 3. Configure the node name, type, WiFi credentials and server URL
 4. The device will restart and connect to your WiFi network

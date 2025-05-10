@@ -3,7 +3,7 @@
 
 # Create a temporary directory
 TEMP_DIR=$(mktemp -d)
-PACKAGE_NAME="esp32_nooyen_node_firmware"
+PACKAGE_NAME="esp32_Shop_node_firmware"
 
 # Copy all necessary files
 cp -r include lib src platformio.ini README.md $TEMP_DIR/

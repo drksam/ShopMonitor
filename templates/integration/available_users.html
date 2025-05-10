@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Available NooyenUSATracker Users{% endblock %}
+{% block title %}Available ShopMonitor Users{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -8,7 +8,7 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">Available NooyenUSATracker Users</h4>
+                    <h4 class="mb-0">Available ShopMonitor Users</h4>
                     <a href="{{ url_for('integration_web.config_page') }}" class="btn btn-sm btn-secondary">
                         <i class="fas fa-arrow-left"></i> Back to Integration
                     </a>
@@ -16,15 +16,15 @@
                 <div class="card-body">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i> 
-                        This page shows users from NooyenUSATracker that can be imported into the RFID Access Control system.
-                        Only users with RFID tags assigned in NooyenUSATracker will appear here.
+                        This page shows users from ShopMonitor that can be imported into the RFID Access Control system.
+                        Only users with RFID tags assigned in ShopMonitor will appear here.
                     </div>
                     
                     <div id="loading-indicator" class="text-center py-4">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                        <p class="mt-2">Loading available users from NooyenUSATracker...</p>
+                        <p class="mt-2">Loading available users from ShopMonitor...</p>
                     </div>
                     
                     <div id="error-message" class="alert alert-danger d-none">
@@ -52,7 +52,7 @@
                         
                         <div id="no-users-message" class="alert alert-warning d-none">
                             <i class="fas fa-user-slash"></i> 
-                            No new users available to import. All NooyenUSATracker users with RFID tags have already been imported.
+                            No new users available to import. All ShopMonitor users with RFID tags have already been imported.
                         </div>
                     </div>
                 </div>

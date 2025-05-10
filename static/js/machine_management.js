@@ -1,4 +1,4 @@
-// Machine and Zone Management functionality for NooyenUSATracker
+// Machine and Zone Management functionality for Shop Suite
 
 document.addEventListener('DOMContentLoaded', function() {
     // Event handlers for edit zone modal

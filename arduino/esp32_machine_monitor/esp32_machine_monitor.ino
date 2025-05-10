@@ -1,5 +1,5 @@
 /**
- * NooyenUSA RFID Machine Monitor - ESP32 Multi-Function Node
+ * ShopMonitor RFID Machine Monitor - ESP32 Multi-Function Node
  * 
  * This firmware supports three node types in a single codebase:
  *  1. Machine Monitor - Controls machine access with RFID and activity tracking
@@ -30,7 +30,7 @@
  *  - NTPClient
  *  - WiFiUdp
  *
- * Copyright (c) 2025 NooyenUSA
+ * Copyright (c) 2025 ShopMonitor
  */
 
 #include <WiFi.h>
@@ -112,8 +112,8 @@ String wifiSSID = "";  // Will be loaded from preferences
 String wifiPassword = ""; // Will be loaded from preferences
 bool wifiConnected = false;
 bool apMode = false;
-String apSSID = "NooyenNode";  // Default AP name
-String apPassword = "nodesecret123";  // Default AP password
+String apSSID = "ShopMonitor";  // Default AP name
+String apPassword = "ShopMonitor123";  // Default AP password
 bool isConfigured = false;  // Flag to check if node is configured
 
 // Hardware detection flags
@@ -523,7 +523,7 @@ void setupRFIDReader(int index) {
 // ===== WIFI SETUP =====
 void setupWiFi() {
   if (apMode) {
-    // Start AP mode - use NooyenNode AP name for unconfigured nodes
+    // Start AP mode - use ShopNode AP name for unconfigured nodes
     String apName = isConfigured ? nodeId : apSSID;
     
 #ifdef DEBUG_OUTPUT
@@ -536,7 +536,7 @@ void setupWiFi() {
     }
     FastLED.show();
     
-    // If node is not configured, use NooyenNode as the AP name for initial setup
+    // If node is not configured, use ShopNode as the AP name for initial setup
     // Otherwise, use ESP32-Node-XXXX format with last 4 characters of node ID
     if (!isConfigured) {
       WiFi.softAP(apName, apPassword);
@@ -1414,7 +1414,7 @@ void handleRoot() {
     int networksFound = WiFi.scanNetworks();
     
     String setupHtml = "<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
-    setupHtml += "<title>NooyenUSA Node Setup</title>";
+    setupHtml += "<title>ShopMonitor Node Setup</title>";
     setupHtml += "<style>";
     setupHtml += "body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333; background-color: #f8f9fa; }";
     setupHtml += "h1, h2 { color: #0066cc; }";
@@ -1434,11 +1434,11 @@ void handleRoot() {
     setupHtml += "</style>";
     setupHtml += "</head><body>";
     setupHtml += "<div class=\"container\">";
-    setupHtml += "<div class=\"header\"><div class=\"logo\">NooyenUSA Node Setup</div></div>";
+    setupHtml += "<div class=\"header\"><div class=\"logo\">ShopMonitor Node Setup</div></div>";
     
     if (!isConfigured) {
       setupHtml += "<h2>Initial Node Configuration</h2>";
-      setupHtml += "<p>Welcome to your new NooyenUSA node! Please complete the following configuration to get started.</p>";
+      setupHtml += "<p>Welcome to your new ShopMonitor node! Please complete the following configuration to get started.</p>";
     } else {
       setupHtml += "<h2>WiFi Configuration</h2>";
       setupHtml += "<p>Your node cannot connect to the configured WiFi network. Please update your WiFi settings.</p>";
@@ -1480,7 +1480,7 @@ void handleRoot() {
     setupHtml += "<button type=\"submit\">Save Configuration & Restart</button>";
     setupHtml += "</form>";
     
-    setupHtml += "<div class=\"footer\">NooyenUSA ESP32 Multi-Function Node v1.0</div>";
+    setupHtml += "<div class=\"footer\">Shop ESP32 Multi-Function Node v1.0</div>";
     setupHtml += "</div>";
     
     setupHtml += "<script>";
@@ -1674,7 +1674,7 @@ void handleRoot() {
     </div>
     
     <div class="footer">
-      <p>ESP32 Multi-Function Node v1.0.0 | &copy; 2025 NooyenUSA</p>
+      <p>ESP32 Multi-Function Node v1.0.0 | &copy; 2025 ShopMonitor</p>
     </div>
   </div>
 

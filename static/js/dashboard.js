@@ -1,4 +1,4 @@
-// Dashboard functionality for NooyenUSATracker
+// Dashboard functionality for Shop Suite
 
 /**
  * Updates the dashboard with current machine statuses
@@ -78,10 +78,29 @@ function updateDashboard() {
                             const formattedTime = lastActivity.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                             activityElement.querySelector('.last-activity').textContent = formattedTime;
                         }
+                        
+                        // Add lead operator badge if applicable
+                        if (machine.is_lead_operator) {
+                            // Remove existing badge if it exists
+                            const existingBadge = card.querySelector('.lead-operator-badge');
+                            if (!existingBadge) {
+                                const leadBadge = document.createElement('div');
+                                leadBadge.className = 'lead-operator-badge';
+                                leadBadge.innerHTML = '<i class="fas fa-star lead-operator-icon"></i>Lead';
+                                card.appendChild(leadBadge);
+                            }
+                        } else {
+                            // Remove badge if exists and user is not lead
+                            const existingBadge = card.querySelector('.lead-operator-badge');
+                            if (existingBadge) {
+                                card.removeChild(existingBadge);
+                            }
+                        }
                     } else {
                         // Remove user info if no user is logged in
                         const userElement = cardBody.querySelector('.user-info');
                         const activityElement = cardBody.querySelector('.activity-info');
+                        const leadBadge = card.querySelector('.lead-operator-badge');
                         
                         if (userElement) {
                             cardBody.removeChild(userElement);
@@ -89,6 +108,10 @@ function updateDashboard() {
                         
                         if (activityElement) {
                             cardBody.removeChild(activityElement);
+                        }
+                        
+                        if (leadBadge) {
+                            card.removeChild(leadBadge);
                         }
                         
                         // Add no user message if it doesn't exist
@@ -100,11 +123,66 @@ function updateDashboard() {
                             cardBody.appendChild(noUserElement);
                         }
                     }
+                    
+                    // Display active sessions for this machine if any
+                    if (machine.active_sessions && machine.active_sessions.length > 0) {
+                        // Add sessions count badge
+                        let sessionsBadge = card.querySelector('.sessions-count-badge');
+                        if (!sessionsBadge) {
+                            sessionsBadge = document.createElement('div');
+                            sessionsBadge.className = 'sessions-count-badge';
+                            card.appendChild(sessionsBadge);
+                        }
+                        sessionsBadge.textContent = `${machine.active_sessions.length} ${machine.active_sessions.length === 1 ? 'session' : 'sessions'}`;
+                        
+                        // Create or update sessions list
+                        let sessionsListElement = cardBody.querySelector('.session-user-list');
+                        if (!sessionsListElement) {
+                            sessionsListElement = document.createElement('div');
+                            sessionsListElement.className = 'session-user-list';
+                            cardBody.appendChild(sessionsListElement);
+                        }
+                        
+                        // Clear existing sessions and add new ones
+                        sessionsListElement.innerHTML = '';
+                        if (machine.active_sessions.length > 0) {
+                            const sessionHeader = document.createElement('p');
+                            sessionHeader.className = 'mb-1 fw-bold';
+                            sessionHeader.innerHTML = '<i class="fas fa-users me-2"></i>Active Sessions:';
+                            sessionsListElement.appendChild(sessionHeader);
+                            
+                            machine.active_sessions.forEach(session => {
+                                const sessionElement = document.createElement('div');
+                                sessionElement.className = 'session-user';
+                                sessionElement.innerHTML = `
+                                    <small class="me-1">•</small>
+                                    <small>${session.user_name}${session.is_lead ? ' <i class="fas fa-star lead-operator-icon"></i>' : ''}</small>
+                                    <small class="ms-auto text-muted">${formatTimeSince(new Date(session.start_time))}</small>
+                                `;
+                                sessionsListElement.appendChild(sessionElement);
+                            });
+                        }
+                    } else {
+                        // Remove sessions badge and list if no active sessions
+                        const sessionsBadge = card.querySelector('.sessions-count-badge');
+                        const sessionsListElement = cardBody.querySelector('.session-user-list');
+                        
+                        if (sessionsBadge) {
+                            card.removeChild(sessionsBadge);
+                        }
+                        
+                        if (sessionsListElement) {
+                            cardBody.removeChild(sessionsListElement);
+                        }
+                    }
                 }
             });
             
             // Update dashboard statistics
             updateStatistics(machines);
+
+            // Update area and zone summary
+            updateAreaZoneSummary(machines);
         })
         .catch(error => {
             console.error('Error updating dashboard:', error);
@@ -121,6 +199,7 @@ function updateStatistics(machines) {
     let warningCount = 0;
     let offlineCount = 0;
     let activeUsers = 0;
+    let leadOperators = 0;
     
     machines.forEach(machine => {
         // Count by status
@@ -134,9 +213,12 @@ function updateStatistics(machines) {
             idleCount++;
         }
         
-        // Count active users
+        // Count active users and lead operators
         if (machine.current_user) {
             activeUsers++;
+            if (machine.is_lead_operator) {
+                leadOperators++;
+            }
         }
     });
     
@@ -152,29 +234,132 @@ function updateStatistics(machines) {
         activeUsersElement.textContent = activeUsers;
     }
     
-    // Update active machines counter if it exists
-    const activeCountElement = document.querySelectorAll('.dashboard-stats h2')[1];
-    if (activeCountElement) {
-        activeCountElement.textContent = activeCount;
-    }
-    
-    // Update warnings counter if it exists
-    const warningCountElement = document.querySelectorAll('.dashboard-stats h2')[2];
-    if (warningCountElement) {
-        warningCountElement.textContent = warningCount;
+    // Update lead operators count if element exists
+    const leadOpsElement = document.getElementById('lead-operators-count');
+    if (leadOpsElement) {
+        leadOpsElement.textContent = leadOperators;
     }
 }
 
 /**
- * Formats relative timestamps on the page
+ * Updates the area and zone summary section with active machines and sessions
+ * @param {Array} machines - Array of machine objects
+ */
+function updateAreaZoneSummary(machines) {
+    // First, fetch the area and zone hierarchy data
+    fetch('/api/areas/hierarchy')
+        .then(response => response.json())
+        .then(hierarchy => {
+            const summaryContainer = document.getElementById('area-zone-summary');
+            if (!summaryContainer) return;
+            
+            // Clear existing summary
+            summaryContainer.innerHTML = '';
+            
+            // Create summary for each area
+            hierarchy.forEach(area => {
+                const areaCard = document.createElement('div');
+                areaCard.className = 'card mb-3';
+                
+                // Count active machines and sessions in this area
+                const areaMachines = machines.filter(machine => machine.area_id === area.id);
+                const activeCount = areaMachines.filter(machine => machine.status === 'active').length;
+                const totalSessions = areaMachines.reduce((sum, machine) => 
+                    sum + (machine.active_sessions ? machine.active_sessions.length : 0), 0);
+                
+                // Create area header with counts
+                areaCard.innerHTML = `
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">${area.name}</h5>
+                        <div>
+                            <span class="badge bg-success me-2">${activeCount} Active</span>
+                            <span class="badge bg-primary">${totalSessions} Sessions</span>
+                        </div>
+                    </div>
+                    <div class="card-body" id="area-${area.id}-body"></div>
+                `;
+                
+                summaryContainer.appendChild(areaCard);
+                const areaBody = document.getElementById(`area-${area.id}-body`);
+                
+                // Add zone details within this area
+                if (area.zones && area.zones.length > 0) {
+                    const zonesList = document.createElement('div');
+                    zonesList.className = 'list-group';
+                    
+                    area.zones.forEach(zone => {
+                        const zoneMachines = machines.filter(machine => machine.zone_id === zone.id);
+                        const zoneActiveCount = zoneMachines.filter(machine => machine.status === 'active').length;
+                        const zoneTotalSessions = zoneMachines.reduce((sum, machine) => 
+                            sum + (machine.active_sessions ? machine.active_sessions.length : 0), 0);
+                        
+                        // Only show zones with active machines or sessions
+                        if (zoneActiveCount > 0 || zoneTotalSessions > 0) {
+                            const zoneItem = document.createElement('div');
+                            zoneItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                            zoneItem.innerHTML = `
+                                <div>
+                                    <i class="fas fa-map-marker-alt me-2 text-primary"></i>
+                                    ${zone.name}
+                                </div>
+                                <div>
+                                    <span class="badge bg-success me-2">${zoneActiveCount} Active</span>
+                                    <span class="badge bg-primary">${zoneTotalSessions} Sessions</span>
+                                </div>
+                            `;
+                            zonesList.appendChild(zoneItem);
+                        }
+                    });
+                    
+                    if (zonesList.children.length > 0) {
+                        areaBody.appendChild(zonesList);
+                    } else {
+                        areaBody.innerHTML = '<p class="text-muted">No active machines in this area</p>';
+                    }
+                } else {
+                    areaBody.innerHTML = '<p class="text-muted">No zones defined in this area</p>';
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error updating area/zone summary:', error);
+        });
+}
+
+/**
+ * Formats a timestamp as a "time ago" string
+ * @param {Date} date - The date to format
+ * @returns {string} - Formatted time string (e.g. "5m ago")
+ */
+function formatTimeSince(date) {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    
+    let interval = Math.floor(seconds / 31536000);
+    if (interval > 1) return interval + 'y';
+    
+    interval = Math.floor(seconds / 2592000);
+    if (interval > 1) return interval + 'mo';
+    
+    interval = Math.floor(seconds / 86400);
+    if (interval > 1) return interval + 'd';
+    
+    interval = Math.floor(seconds / 3600);
+    if (interval > 1) return interval + 'h';
+    
+    interval = Math.floor(seconds / 60);
+    if (interval > 1) return interval + 'm';
+    
+    return 'just now';
+}
+
+/**
+ * Format all timestamps on the page
  */
 function formatTimestamps() {
     document.querySelectorAll('.last-activity').forEach(element => {
-        const timestamp = element.getAttribute('data-timestamp');
-        if (timestamp) {
-            const date = new Date(timestamp);
-            const formattedTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            element.textContent = formattedTime;
+        if (element.dataset.timestamp) {
+            const timestamp = new Date(element.dataset.timestamp);
+            element.textContent = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
     });
 }

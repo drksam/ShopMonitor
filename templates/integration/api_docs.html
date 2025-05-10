@@ -80,7 +80,7 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="fas fa-exchange-alt me-2"></i>NooyenUSATracker API Integration</h1>
+    <h1><i class="fas fa-exchange-alt me-2"></i>ShopMonitor API Integration</h1>
     <div>
         <a href="{{ url_for('integration.integration_status') }}" class="btn btn-outline-primary" id="apiCheck" target="_blank">
             <i class="fas fa-sync-alt me-1"></i> Check API Status
@@ -117,7 +117,7 @@
                 <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Integration Overview</h5>
             </div>
             <div class="card-body">
-                <p>This integration allows bidirectional communication between the RFID Machine Monitor system and NooyenUSATracker application. It supports:</p>
+                <p>This integration allows bidirectional communication between the RFID Machine Monitor system and ShopMonitor application. It supports:</p>
                 <ul>
                     <li><strong>User Synchronization:</strong> Keep user data synchronized between systems</li>
                     <li><strong>Machine Status Reporting:</strong> Share real-time machine status and activity</li>
@@ -128,8 +128,8 @@
                 <h5 class="mt-4">Configuration Requirements</h5>
                 <p>To enable this integration, you need:</p>
                 <ol>
-                    <li>A valid NooyenUSATracker API key</li>
-                    <li>The base URL for the NooyenUSATracker API</li>
+                    <li>A valid ShopMonitor API key</li>
+                    <li>The base URL for the ShopMonitor API</li>
                     <li>Network connectivity between the two systems</li>
                 </ol>
                 
@@ -166,7 +166,7 @@
                             <div class="col-md-5">
                                 <div class="card">
                                     <div class="card-body text-center">
-                                        <h5>NooyenUSATracker</h5>
+                                        <h5>ShopMonitor</h5>
                                         <p class="text-muted">Central Management System</p>
                                     </div>
                                 </div>
@@ -218,7 +218,7 @@
                 </div>
                 <div class="card-body">
                     <p><strong>Description:</strong> Authenticates RFID card access for a specific machine.</p>
-                    <p><strong>Usage:</strong> Called by NooyenUSATracker to verify if a user has access to a machine.</p>
+                    <p><strong>Usage:</strong> Called by ShopMonitor to verify if a user has access to a machine.</p>
                     
                     <h6>Request Body:</h6>
                     <div class="code-block">
@@ -256,7 +256,7 @@
                 </div>
                 <div class="card-body">
                     <p><strong>Description:</strong> Provides status information about all nodes and their connected machines.</p>
-                    <p><strong>Usage:</strong> Called by NooyenUSATracker during sync to get current machine statuses.</p>
+                    <p><strong>Usage:</strong> Called by ShopMonitor during sync to get current machine statuses.</p>
                     
                     <h6>Response:</h6>
                     <div class="code-block">
@@ -304,8 +304,8 @@
                     <span class="badge bg-primary">Inbound</span>
                 </div>
                 <div class="card-body">
-                    <p><strong>Description:</strong> Receives alerts from NooyenUSATracker.</p>
-                    <p><strong>Usage:</strong> Called by NooyenUSATracker to send alerts for display/action in our system.</p>
+                    <p><strong>Description:</strong> Receives alerts from ShopMonitor.</p>
+                    <p><strong>Usage:</strong> Called by ShopMonitor to send alerts for display/action in our system.</p>
                     
                     <h6>Request Body:</h6>
                     <div class="code-block">
@@ -344,8 +344,8 @@
                     <span class="badge bg-primary">Inbound</span>
                 </div>
                 <div class="card-body">
-                    <p><strong>Description:</strong> Acknowledges an alert in our system.</p>
-                    <p><strong>Usage:</strong> Called by NooyenUSATracker when an alert is acknowledged there.</p>
+                    <p><strong>Description:</strong> Acknowledges an alert in ShopMonitor.</p>
+                    <p><strong>Usage:</strong> Called by ShopMonitor when an alert is acknowledged there.</p>
                     
                     <h6>Response:</h6>
                     <div class="code-block">
@@ -360,7 +360,7 @@
     "message": "Machine requires maintenance",
     "alert_type": "warning",
     "status": "acknowledged",
-    "origin": "nooyen_tracker",
+    "origin": "shop_monitor",
     "created_at": "2025-04-18T12:30:45Z",
     "acknowledged_at": "2025-04-18T12:45:22Z",
     "resolved_at": null
@@ -380,35 +380,13 @@
                     <span class="badge bg-primary">Inbound</span>
                 </div>
                 <div class="card-body">
-                    <p><strong>Description:</strong> Resolves an alert in our system.</p>
-                    <p><strong>Usage:</strong> Called by NooyenUSATracker when an alert is resolved there.</p>
-                    
-                    <h6>Response:</h6>
-                    <div class="code-block">
-{
-  "success": true,
-  "message": "Alert 1 resolved",
-  "alert": {
-    "id": 1,
-    "external_id": 1,
-    "machine_id": "W1",
-    "machine_name": "Welding Machine 1",
-    "message": "Machine requires maintenance",
-    "alert_type": "warning",
-    "status": "resolved",
-    "origin": "nooyen_tracker",
-    "created_at": "2025-04-18T12:30:45Z",
-    "acknowledged_at": "2025-04-18T12:45:22Z",
-    "resolved_at": "2025-04-18T13:15:30Z"
-  },
-  "timestamp": "2025-04-18T13:15:30Z"
-}
-                    </div>
+                    <p><strong>Description:</strong> Resolves an alert in ShopMonitor.</p>
+                    <p><strong>Usage:</strong> Called when an alert is resolved in our system and needs to be updated in ShopMonitor.</p>
                 </div>
             </div>
         </div>
         
-        <!-- Outbound Endpoints (We Call NooyenUSATracker API) -->
+        <!-- Outbound Endpoints (We Call ShopMonitor API) -->
         <div class="api-section" id="outbound-endpoints">
             <h4 class="mb-3"><i class="fas fa-upload me-2"></i>Outbound Endpoints (We Call External API)</h4>
             
@@ -421,7 +399,7 @@
                     <span class="badge bg-secondary">Outbound</span>
                 </div>
                 <div class="card-body">
-                    <p><strong>Description:</strong> Pushes user data to NooyenUSATracker.</p>
+                    <p><strong>Description:</strong> Pushes user data to ShopMonitor.</p>
                     <p><strong>Usage:</strong> Called when users are added, updated, or during sync.</p>
                     
                     <h6>Request Body:</h6>
@@ -451,7 +429,7 @@
                     <span class="badge bg-secondary">Outbound</span>
                 </div>
                 <div class="card-body">
-                    <p><strong>Description:</strong> Pushes location (zone) data to NooyenUSATracker.</p>
+                    <p><strong>Description:</strong> Pushes location (zone) data to ShopMonitor.</p>
                     <p><strong>Usage:</strong> Called when zones are added, updated, or during sync.</p>
                     
                     <h6>Request Body:</h6>
@@ -478,7 +456,7 @@
                     <span class="badge bg-secondary">Outbound</span>
                 </div>
                 <div class="card-body">
-                    <p><strong>Description:</strong> Pushes machine configuration to NooyenUSATracker.</p>
+                    <p><strong>Description:</strong> Pushes machine configuration to ShopMonitor.</p>
                     <p><strong>Usage:</strong> Called when machines are added, updated, or during sync.</p>
                     
                     <h6>Request Body:</h6>
@@ -508,8 +486,8 @@
                     <span class="badge bg-secondary">Outbound</span>
                 </div>
                 <div class="card-body">
-                    <p><strong>Description:</strong> Gets access logs from NooyenUSATracker.</p>
-                    <p><strong>Usage:</strong> Called during sync to retrieve any access events recorded in NooyenUSATracker.</p>
+                    <p><strong>Description:</strong> Gets access logs from ShopMonitor.</p>
+                    <p><strong>Usage:</strong> Called during sync to retrieve any access events recorded in ShopMonitor.</p>
                     
                     <h6>Query Parameters:</h6>
                     <table class="table param-table">
@@ -540,8 +518,8 @@
                     <span class="badge bg-secondary">Outbound</span>
                 </div>
                 <div class="card-body">
-                    <p><strong>Description:</strong> Gets pending alerts from NooyenUSATracker.</p>
-                    <p><strong>Usage:</strong> Called during sync to retrieve new alerts from NooyenUSATracker.</p>
+                    <p><strong>Description:</strong> Gets pending alerts from ShopMonitor.</p>
+                    <p><strong>Usage:</strong> Called during sync to retrieve new alerts from ShopMonitor.</p>
                     
                     <h6>Query Parameters:</h6>
                     <table class="table param-table">
@@ -577,8 +555,8 @@
                     <span class="badge bg-secondary">Outbound</span>
                 </div>
                 <div class="card-body">
-                    <p><strong>Description:</strong> Sends an alert to NooyenUSATracker.</p>
-                    <p><strong>Usage:</strong> Called when an alert is generated in our system and needs to be sent to NooyenUSATracker.</p>
+                    <p><strong>Description:</strong> Sends an alert to ShopMonitor.</p>
+                    <p><strong>Usage:</strong> Called when an alert is generated in our system and needs to be sent to ShopMonitor.</p>
                     
                     <h6>Request Body:</h6>
                     <div class="code-block">
@@ -601,8 +579,8 @@
                     <span class="badge bg-secondary">Outbound</span>
                 </div>
                 <div class="card-body">
-                    <p><strong>Description:</strong> Acknowledges an alert in NooyenUSATracker.</p>
-                    <p><strong>Usage:</strong> Called when an alert is acknowledged in our system and needs to be updated in NooyenUSATracker.</p>
+                    <p><strong>Description:</strong> Acknowledges an alert in ShopMonitor.</p>
+                    <p><strong>Usage:</strong> Called when an alert is acknowledged in our system and needs to be updated in ShopMonitor.</p>
                 </div>
             </div>
             
@@ -615,8 +593,8 @@
                     <span class="badge bg-secondary">Outbound</span>
                 </div>
                 <div class="card-body">
-                    <p><strong>Description:</strong> Resolves an alert in NooyenUSATracker.</p>
-                    <p><strong>Usage:</strong> Called when an alert is resolved in our system and needs to be updated in NooyenUSATracker.</p>
+                    <p><strong>Description:</strong> Resolves an alert in ShopMonitor.</p>
+                    <p><strong>Usage:</strong> Called when an alert is resolved in our system and needs to be updated in ShopMonitor.</p>
                 </div>
             </div>
         </div>
@@ -727,7 +705,7 @@
                 <h5 class="mb-0"><i class="fas fa-lock me-2"></i>Authentication</h5>
             </div>
             <div class="card-body">
-                <p>All API requests between NooyenUSATracker and this system require authentication using an API key.</p>
+                <p>All API requests between ShopMonitor and this system require authentication using an API key.</p>
                 
                 <h5 class="mt-4">Using API Keys</h5>
                 <p>The API key should be included in the <code>X-API-Key</code> header for all requests.</p>
@@ -777,15 +755,15 @@ fetch('https://your-server.example.com/integration/api/auth', {
                     <h5>Synchronization Steps</h5>
                     <ol>
                         <li class="mb-3">
-                            <strong>Push User Data to NooyenUSATracker</strong>
+                            <strong>Push User Data to ShopMonitor</strong>
                             <p class="text-muted">Send all user information including RFID tags, names, and access levels.</p>
                         </li>
                         <li class="mb-3">
-                            <strong>Push Location Data to NooyenUSATracker</strong>
+                            <strong>Push Location Data to ShopMonitor</strong>
                             <p class="text-muted">Send all zone/location information.</p>
                         </li>
                         <li class="mb-3">
-                            <strong>Push Machine Data to NooyenUSATracker</strong>
+                            <strong>Push Machine Data to ShopMonitor</strong>
                             <p class="text-muted">Send all machine configurations including connected nodes, ports, and zone assignments.</p>
                         </li>
                         <li class="mb-3">
@@ -793,11 +771,11 @@ fetch('https://your-server.example.com/integration/api/auth', {
                             <p class="text-muted">Gather detailed status information for all nodes and machines.</p>
                         </li>
                         <li class="mb-3">
-                            <strong>Pull Access Logs from NooyenUSATracker</strong>
+                            <strong>Pull Access Logs from ShopMonitor</strong>
                             <p class="text-muted">Retrieve access events that may have been recorded in the main system.</p>
                         </li>
                         <li class="mb-3">
-                            <strong>Pull Pending Alerts from NooyenUSATracker</strong>
+                            <strong>Pull Pending Alerts from ShopMonitor</strong>
                             <p class="text-muted">Retrieve any new alerts or notifications from the main system.</p>
                         </li>
                         <li class="mb-3">

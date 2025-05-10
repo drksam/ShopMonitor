@@ -1,7 +1,7 @@
 """
-Integration package for NooyenUSATracker
+Integration package for ShopMonitor
 """
 
-from .nooyen_integration import integration
+from .shop_integration import integration
 
 __all__ = ['integration']

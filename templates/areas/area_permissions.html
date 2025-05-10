@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block title %}Area Permissions: {{ area.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('areas.list_areas') }}">Areas</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('areas.view_area', area_id=area.id) }}">{{ area.name }}</a></li>
+            <li class="breadcrumb-item active">Permissions</li>
+        </ol>
+    </nav>
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">
+            <span class="badge bg-dark me-2">{{ area.code }}</span>
+            {{ area.name }} - Permissions
+        </h1>
+        <a href="{{ url_for('areas.view_area', area_id=area.id) }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Area
+        </a>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Current Permissions</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if permissions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Email</th>
+                                    <th>Permission Level</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for permission in permissions %}
+                                <tr>
+                                    <td>{{ permission.user.username }}</td>
+                                    <td>{{ permission.user.email }}</td>
+                                    <td>
+                                        {% if permission.permission_level == 'view' %}
+                                        <span class="badge bg-secondary">View Only</span>
+                                        {% elif permission.permission_level == 'operate' %}
+                                        <span class="badge bg-primary">Operate</span>
+                                        {% elif permission.permission_level == 'manage' %}
+                                        <span class="badge bg-info">Manage</span>
+                                        {% elif permission.permission_level == 'admin' %}
+                                        <span class="badge bg-danger">Administrator</span>
+                                        {% else %}
+                                        <span class="badge bg-dark">{{ permission.permission_level }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <form method="post" action="{{ url_for('areas.delete_permission', area_id=area.id, permission_id=permission.id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to remove this permission?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="fas fa-trash"></i> Remove
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center p-4">
+                        <p class="text-muted mb-0">No permissions have been assigned for this area.</p>
+                        <p class="text-muted mb-0">Admin users automatically have access to all areas.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Add Permission</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {{ form.csrf_token }}
+                        
+                        <div class="mb-3">
+                            {{ form.user_id.label(class="form-label") }}
+                            {{ form.user_id(class="form-select" + (" is-invalid" if form.user_id.errors else "")) }}
+                            {% if form.user_id.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.user_id.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.permission_level.label(class="form-label") }}
+                            {{ form.permission_level(class="form-select" + (" is-invalid" if form.permission_level.errors else "")) }}
+                            {% if form.permission_level.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.permission_level.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            <small class="text-muted mt-2">
+                                <strong>View Only:</strong> Can only view area data<br>
+                                <strong>Operate:</strong> Can operate machines in area<br>
+                                <strong>Manage:</strong> Can manage nodes and machines<br>
+                                <strong>Administrator:</strong> Full access to area settings
+                            </small>
+                        </div>
+                        
+                        {{ form.submit(class="btn btn-primary w-100") }}
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">About Permissions</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0 text-muted">
+                        Area permissions control which users can access this area and what actions they can perform.
+                        Users with admin role automatically have full access to all areas.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

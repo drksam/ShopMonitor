@@ -1,0 +1,432 @@
+{% extends 'base.html' %}
+
+{% block title %}Area Analytics: {{ area.name }}{% endblock %}
+
+{% block head %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="mb-0">{{ area.name }} Analytics</h1>
+        <div>
+            <a href="{{ url_for('areas.view_area', area_id=area.id) }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Area
+            </a>
+            <div class="btn-group ms-2">
+                <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-calendar"></i> Time Range
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item time-range-option" href="#" data-days="7">Last 7 Days</a></li>
+                    <li><a class="dropdown-item time-range-option" href="#" data-days="14">Last 14 Days</a></li>
+                    <li><a class="dropdown-item time-range-option" href="#" data-days="30">Last 30 Days</a></li>
+                    <li><a class="dropdown-item time-range-option" href="#" data-days="90">Last 90 Days</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Key metrics cards -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Machine Sessions</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-sessions">--</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Hours</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-hours">--</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Average Session Duration</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="avg-duration">--</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-stopwatch fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Active Machines</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="active-machines">--</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-desktop fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Usage by time chart -->
+        <div class="col-xl-8 col-lg-7 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Machine Usage Over Time</h6>
+                    <div class="dropdown no-arrow">
+                        <a class="dropdown-toggle" href="#" role="button" id="usageChartDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right shadow" aria-labelledby="usageChartDropdown">
+                            <a class="dropdown-item toggle-chart-view" href="#" data-view="daily">Daily View</a>
+                            <a class="dropdown-item toggle-chart-view" href="#" data-view="hourly">Hourly View</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="#" id="download-usage-chart">Download Chart</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="usageTimeChart" style="height:310px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Usage by location chart -->
+        <div class="col-xl-4 col-lg-5 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Usage by Location</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-pie">
+                        <canvas id="locationPieChart" style="height:310px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Machine-specific metrics -->
+        <div class="col-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Machine Metrics</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="machineMetricsTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Machine ID</th>
+                                    <th>Name</th>
+                                    <th>Location</th>
+                                    <th>Sessions</th>
+                                    <th>Total Hours</th>
+                                    <th>Avg. Session</th>
+                                    <th>Last Used</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="machine-metrics-tbody">
+                                <!-- Data will be populated via JavaScript -->
+                                <tr>
+                                    <td colspan="8" class="text-center">Loading machine data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Area ID from the current page
+        const areaId = {{ area.id }};
+        let selectedDays = 30; // Default time range
+        let usageChart = null;
+        let locationChart = null;
+        
+        // Initialize the dashboard with default values
+        loadDashboardData(areaId, selectedDays);
+        
+        // Event listener for time range selection
+        document.querySelectorAll('.time-range-option').forEach(option => {
+            option.addEventListener('click', function(e) {
+                e.preventDefault();
+                selectedDays = parseInt(this.dataset.days);
+                loadDashboardData(areaId, selectedDays);
+            });
+        });
+        
+        // Event listener for chart view toggle
+        document.querySelectorAll('.toggle-chart-view').forEach(option => {
+            option.addEventListener('click', function(e) {
+                e.preventDefault();
+                const viewType = this.dataset.view;
+                updateChartView(viewType);
+            });
+        });
+        
+        // Function to load dashboard data from API
+        function loadDashboardData(areaId, days) {
+            fetch(`/api/areas/${areaId}/analytics?days=${days}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateMetricsCards(data.summary);
+                    updateUsageTimeChart(data.time_series);
+                    updateLocationPieChart(data.location_usage);
+                    updateMachineMetricsTable(data.machines);
+                })
+                .catch(error => {
+                    console.error('Error loading analytics data:', error);
+                });
+        }
+        
+        // Update the metrics cards with summary data
+        function updateMetricsCards(summary) {
+            document.getElementById('total-sessions').textContent = summary.total_sessions;
+            document.getElementById('total-hours').textContent = (summary.total_hours).toFixed(1);
+            document.getElementById('avg-duration').textContent = (summary.avg_duration).toFixed(1) + ' min';
+            document.getElementById('active-machines').textContent = summary.active_machines;
+        }
+        
+        // Update the usage time chart
+        function updateUsageTimeChart(timeData) {
+            const ctx = document.getElementById('usageTimeChart').getContext('2d');
+            
+            if (usageChart) {
+                usageChart.destroy();
+            }
+            
+            usageChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timeData.labels,
+                    datasets: [{
+                        label: 'Machine Hours',
+                        data: timeData.values,
+                        lineTension: 0.3,
+                        backgroundColor: "rgba(78, 115, 223, 0.05)",
+                        borderColor: "rgba(78, 115, 223, 1)",
+                        pointRadius: 3,
+                        pointBackgroundColor: "rgba(78, 115, 223, 1)",
+                        pointBorderColor: "rgba(78, 115, 223, 1)",
+                        pointHoverRadius: 3,
+                        pointHoverBackgroundColor: "rgba(78, 115, 223, 1)",
+                        pointHoverBorderColor: "rgba(78, 115, 223, 1)",
+                        pointHitRadius: 10,
+                        pointBorderWidth: 2,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 25,
+                            top: 25,
+                            bottom: 0
+                        }
+                    },
+                    scales: {
+                        x: {
+                            time: {
+                                unit: 'date'
+                            },
+                            grid: {
+                                display: false,
+                                drawBorder: false
+                            },
+                            ticks: {
+                                maxTicksLimit: 7
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                maxTicksLimit: 5,
+                                padding: 10
+                            },
+                            grid: {
+                                color: "rgb(234, 236, 244)",
+                                zeroLineColor: "rgb(234, 236, 244)",
+                                drawBorder: false,
+                                borderDash: [2],
+                                zeroLineBorderDash: [2]
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: "rgb(255,255,255)",
+                            bodyFontColor: "#858796",
+                            titleMarginBottom: 10,
+                            titleFontColor: '#6e707e',
+                            titleFontSize: 14,
+                            borderColor: '#dddfeb',
+                            borderWidth: 1,
+                            xPadding: 15,
+                            yPadding: 15,
+                            displayColors: false,
+                            intersect: false,
+                            mode: 'index',
+                            caretPadding: 10
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update the location pie chart
+        function updateLocationPieChart(locationData) {
+            const ctx = document.getElementById('locationPieChart').getContext('2d');
+            
+            if (locationChart) {
+                locationChart.destroy();
+            }
+            
+            locationChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: locationData.labels,
+                    datasets: [{
+                        data: locationData.values,
+                        backgroundColor: [
+                            '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', 
+                            '#e74a3b', '#5a5c69', '#858796', '#6610f2',
+                            '#fd7e14', '#20c9a6'
+                        ],
+                        hoverBackgroundColor: [
+                            '#2e59d9', '#17a673', '#2c9faf', '#dda20a',
+                            '#be2617', '#484a54', '#60616f', '#4d0bc1',
+                            '#c96209', '#169c81'
+                        ],
+                        hoverBorderColor: "rgba(234, 236, 244, 1)",
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            backgroundColor: "rgb(255,255,255)",
+                            bodyFontColor: "#858796",
+                            borderColor: '#dddfeb',
+                            borderWidth: 1,
+                            xPadding: 15,
+                            yPadding: 15,
+                            displayColors: false,
+                            caretPadding: 10,
+                        }
+                    },
+                    cutout: '70%',
+                }
+            });
+        }
+        
+        // Update the machine metrics table
+        function updateMachineMetricsTable(machines) {
+            const tbody = document.getElementById('machine-metrics-tbody');
+            tbody.innerHTML = '';
+            
+            if (machines.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td colspan="8" class="text-center">No machine data available</td>';
+                tbody.appendChild(tr);
+                return;
+            }
+            
+            machines.forEach(machine => {
+                const tr = document.createElement('tr');
+                
+                // Status badge class
+                let statusClass = 'bg-secondary';
+                if (machine.status === 'active') statusClass = 'bg-success';
+                else if (machine.status === 'warning') statusClass = 'bg-warning';
+                else if (machine.status === 'offline') statusClass = 'bg-danger';
+                
+                tr.innerHTML = `
+                    <td><code>${machine.machine_id}</code></td>
+                    <td><a href="/machines/${machine.id}">${machine.name}</a></td>
+                    <td>${machine.zone_name}</td>
+                    <td>${machine.sessions}</td>
+                    <td>${machine.total_hours.toFixed(1)}</td>
+                    <td>${machine.avg_duration.toFixed(1)} min</td>
+                    <td>${machine.last_used ? new Date(machine.last_used).toLocaleString() : 'Never'}</td>
+                    <td><span class="badge ${statusClass}">${machine.status}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        // Function to update chart view (daily/hourly)
+        function updateChartView(viewType) {
+            fetch(`/api/areas/${areaId}/analytics?days=${selectedDays}&view=${viewType}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateUsageTimeChart(data.time_series);
+                })
+                .catch(error => {
+                    console.error('Error updating chart view:', error);
+                });
+        }
+        
+        // Event listener for chart download
+        document.getElementById('download-usage-chart').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const canvas = document.getElementById('usageTimeChart');
+            const image = canvas.toDataURL('image/png');
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.download = `area-${areaId}-usage-chart.png`;
+            link.href = image;
+            link.click();
+        });
+    });
+</script>
+{% endblock %}

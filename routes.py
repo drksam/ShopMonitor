@@ -30,25 +30,111 @@ def api_docs_redirect():
 # Authentication routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Check for SSO token from ShopTracker
+    sso_token = request.args.get('sso_token')
+    if sso_token:
+        # The ShopSuiteAuth handler will process this in the before_request hook
+        # If we get here, it means the token was either invalid or processing failed
+        flash('Invalid or expired authentication token', 'danger')
+    
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
         
+        # First try to authenticate with SuiteUser for cross-app auth
+        from shop_suite.models import SuiteUser
+        suite_user = SuiteUser.query.filter_by(username=username).first()
+        
+        if suite_user and check_password_hash(suite_user.password_hash, password):
+            # Update last login timestamp
+            suite_user.last_login = datetime.utcnow()
+            suite_user.current_app = app.config["SHOP_SUITE_APP_NAME"]
+            db.session.commit()
+            
+            # Log the user in with Flask-Login
+            login_user(suite_user)
+            
+            # Redirect to next page or dashboard
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('dashboard'))
+        
+        # Fall back to legacy User model
         user = User.query.filter_by(username=username).first()
         
         if user and check_password_hash(user.password_hash, password):
+            # Check if user has a linked suite_user, if not create one
+            if not hasattr(user, 'suite_user') or user.suite_user is None:
+                from shop_suite.models import SuiteUser, UserSuiteMapping
+                
+                # Create a new suite user for this legacy user
+                new_suite_user = SuiteUser(
+                    username=user.username,
+                    email=user.email,
+                    password_hash=user.password_hash,
+                    display_name=user.username,
+                    is_admin=user.role.name == 'admin' if user.role else False,
+                    created_by_app="shop_monitor",
+                    managed_by_app="shop_monitor",
+                    current_app="shop_monitor",
+                    last_login=datetime.utcnow()
+                )
+                db.session.add(new_suite_user)
+                db.session.commit()
+                
+                # Create mapping between legacy and suite user
+                mapping = UserSuiteMapping(
+                    legacy_user_id=user.id,
+                    suite_user_id=new_suite_user.id
+                )
+                db.session.add(mapping)
+                db.session.commit()
+                
+                app.logger.info(f"Created new suite user for legacy user {user.username}")
+            
             login_user(user)
             next_page = request.args.get('next')
             return redirect(next_page or url_for('dashboard'))
         else:
             flash('Invalid username or password', 'danger')
     
-    return render_template('login.html')
+    # Check if we have a return URL from ShopTracker
+    next_url = request.args.get('next')
+    source_app = request.args.get('source_app')
+    
+    return render_template('login.html', 
+                          next=next_url,
+                          source_app=source_app)
 
 @app.route('/logout')
 @login_required
 def logout():
+    # Get current user's session token before logout if they're a suite user
+    from shop_suite.models import SuiteUser, UserSession
+    suite_user = None
+    if isinstance(current_user, SuiteUser):
+        suite_user = current_user
+    elif hasattr(current_user, 'suite_user') and current_user.suite_user:
+        suite_user = current_user.suite_user
+        
+    if suite_user:
+        # Invalidate all sessions for this user
+        UserSession.query.filter_by(
+            user_id=suite_user.id,
+            invalidated=False
+        ).update({
+            'invalidated': True
+        })
+        db.session.commit()
+    
+    # Log out with Flask-Login
     logout_user()
+    
+    # Check if we should redirect back to ShopTracker
+    return_to = request.args.get('return_to')
+    if return_to == 'shop_tracker' and app.config.get('SHOP_TRACKER_URL'):
+        flash('You have been logged out', 'success')
+        return redirect(app.config['SHOP_TRACKER_URL'] + '/login')
+    
     flash('You have been logged out', 'success')
     return redirect(url_for('login'))
 
@@ -168,9 +254,9 @@ def add_rfid_user():
     db.session.add(new_user)
     db.session.commit()
     
-    # Push the new user to NooyenUSATracker if integration is configured
+    # Push the new user to ShopTracker if integration is configured
     try:
-        from integration.nooyen_integration import push_user_changes
+        from integration.Shop_integration import push_user_changes
         push_user_changes(new_user)
     except Exception as e:
         app.logger.error(f"Failed to push user changes: {str(e)}")
@@ -192,9 +278,9 @@ def edit_rfid_user(user_id):
     
     db.session.commit()
     
-    # Push the updated user to NooyenUSATracker if integration is configured
+    # Push the updated user to ShopTracker if integration is configured
     try:
-        from integration.nooyen_integration import push_user_changes
+        from integration.Shop_integration import push_user_changes
         push_user_changes(user)
     except Exception as e:
         app.logger.error(f"Failed to push user changes: {str(e)}")
@@ -470,7 +556,7 @@ def manage_authorizations(user_id):
         
         # Push authorization changes to the main app if integration is configured
         try:
-            from integration.nooyen_integration import push_authorization_changes
+            from integration.Shop_integration import push_authorization_changes
             push_authorization_changes(user.id)
         except Exception as e:
             app.logger.error(f"Failed to push authorization changes: {str(e)}")
@@ -661,13 +747,13 @@ def user_profile():
     
     if current_user.role and current_user.role.name == 'admin':
         try:
-            from integration.nooyen_integration import get_last_sync_time
+            from integration.Shop_integration import get_last_sync_time
             last_sync_time = get_last_sync_time()
             
             # Check if API URL is configured
-            if app.config.get('NOOYEN_API_BASE_URL'):
+            if app.config.get('Shop_API_BASE_URL'):
                 integration_configured = True
-                tracker_url = app.config.get('NOOYEN_API_BASE_URL')
+                tracker_url = app.config.get('Shop_API_BASE_URL')
         except Exception as e:
             app.logger.error(f"Error getting integration status: {str(e)}")
     
@@ -2009,10 +2095,10 @@ void printNetworkInfo() {
     
     # Create example Raspberry Pi API code
     raspberry_api_example = """\"\"\"
-Raspberry Pi Node Example for NooyenUSA RFID Machine Monitor
+Raspberry Pi Node Example for ShopMonitor
 
 This example implements a simple machine monitor node that can be
-integrated with the NooyenUSA RFID Machine Monitor system.
+integrated with the ShopMonitor system.
 
 Requirements:
 - Flask
@@ -2267,9 +2353,9 @@ def complete_rfid_registration():
         db.session.add(new_user)
         db.session.commit()
         
-        # Push the new user to NooyenUSATracker if integration is configured
+        # Push the new user to ShopTracker if integration is configured
         try:
-            from integration.nooyen_integration import push_user_changes
+            from integration.Shop_integration import push_user_changes
             push_user_changes(new_user)
         except Exception as e:
             app.logger.error(f"Failed to push user changes: {str(e)}")
@@ -2281,3 +2367,17 @@ def complete_rfid_registration():
         return redirect(url_for('users'))
     
     return render_template('complete_registration.html', pending_rfid=pending_rfid)
+
+@app.route('/api/status', methods=['GET'])
+def api_status():
+    """Return the current status of the API including version information"""
+    from app import APP_VERSION, SUITE_VERSION
+    
+    return jsonify({
+        "status": "online",
+        "version": APP_VERSION,
+        "suite_version": SUITE_VERSION,
+        "app_name": "ShopMonitor",
+        "timestamp": datetime.utcnow().isoformat(),
+        "environment": "production" if not app.debug else "development"
+    })
