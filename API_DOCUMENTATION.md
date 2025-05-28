@@ -913,6 +913,7 @@ Response:
       "updated_at": "2023-05-01T08:20:00Z",
       "last_seen": "2023-05-08T18:30:00Z",
       "firmware_version": "1.2.3",
+      "hardware_type": "esp32-standard",
       "status": "online"
     },
     ...
@@ -935,7 +936,8 @@ Request body:
   "ip_address": "192.168.1.101",
   "zone_id": 3,
   "active": true,
-  "firmware_version": "1.2.3"
+  "firmware_version": "1.2.3",
+  "hardware_type": "esp32-standard"
 }
 ```
 
@@ -953,6 +955,7 @@ Response:
   "updated_at": "2023-05-08T19:00:00Z",
   "last_seen": "2023-05-08T19:00:00Z",
   "firmware_version": "1.2.3",
+  "hardware_type": "esp32-standard",
   "status": "online",
   "api_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
@@ -1015,6 +1018,264 @@ Response:
   "last_seen": "2023-05-08T19:10:00Z"
 }
 ```
+
+#### Get Available Firmware
+
+```
+GET /firmware
+```
+
+Query parameters:
+- `hardware_type` (required): Hardware type ('esp32-standard' or 'esp32-cyd')
+- `node_type` (optional): Node type ('machine_monitor', 'office_reader', or 'accessory_io')
+- `current_version` (optional): Current firmware version
+
+Response:
+```json
+{
+  "firmware": [
+    {
+      "version": "1.3.0",
+      "hardware_type": "esp32-standard",
+      "file_url": "/static/downloads/esp32_shop_firmware.zip",
+      "release_date": "2025-05-12T12:00:00Z",
+      "release_notes": "Added support for area-based operations",
+      "size_bytes": 1048576,
+      "md5_hash": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+      "is_critical": false,
+      "min_version_required": "1.0.0"
+    },
+    {
+      "version": "1.3.0",
+      "hardware_type": "esp32-cyd",
+      "file_url": "/static/downloads/esp32_cyd_audio_firmware.zip",
+      "release_date": "2025-05-12T12:00:00Z",
+      "release_notes": "Added audio broadcasting and Bluetooth support",
+      "size_bytes": 2097152,
+      "md5_hash": "b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7",
+      "is_critical": false,
+      "min_version_required": "1.2.0"
+    }
+  ]
+}
+```
+
+### Node Hardware Types
+
+The system supports multiple hardware types for nodes:
+
+#### ESP32 Standard
+
+Standard ESP32 devices supporting the following node types:
+- `machine_monitor`: Controls machine access with up to 4 RFID readers and activity monitoring
+- `office_reader`: Registers new RFID cards into the system
+- `accessory_io`: Controls auxiliary devices and sensors
+
+#### ESP32-CYD with Audio
+
+ESP32-CYD devices with color touchscreen display and audio capabilities:
+- Supports all standard node types plus enhanced features
+- Color TFT display with touchscreen interface
+- Audio feedback with Bluetooth audio broadcasting
+- Network audio streaming support
+- E-STOP audio muting system
+
+```
+GET /nodes/types
+```
+
+Response:
+```json
+{
+  "hardware_types": [
+    {
+      "id": "esp32-standard",
+      "name": "ESP32 Standard",
+      "description": "Standard ESP32 node with support for multiple RFID readers",
+      "capabilities": ["rfid", "gpio", "relay_control", "activity_monitoring", "e_stop"]
+    },
+    {
+      "id": "esp32-cyd",
+      "name": "ESP32-CYD with Audio",
+      "description": "ESP32-CYD with touchscreen display and audio capabilities",
+      "capabilities": ["rfid", "gpio", "relay_control", "activity_monitoring", "e_stop", "tft_display", "touch_input", "audio", "bluetooth"]
+    }
+  ],
+  "node_types": [
+    {
+      "id": "machine_monitor",
+      "name": "Machine Monitor",
+      "description": "Controls machine access with RFID and monitors activity"
+    },
+    {
+      "id": "office_reader",
+      "name": "Office RFID Reader",
+      "description": "Registers new RFID cards into the system"
+    },
+    {
+      "id": "accessory_io",
+      "name": "Accessory IO Controller",
+      "description": "Manages external devices like fans, lights, etc."
+    }
+  ]
+}
+```
+
+### Audio Broadcasting Configuration (ESP32-CYD only)
+
+```
+GET /nodes/{node_id}/audio
+```
+
+Response:
+```json
+{
+  "audio_enabled": true,
+  "bluetooth_enabled": true,
+  "built_in_volume": 180,
+  "bluetooth_volume": 200,
+  "connected_devices": [
+    {
+      "name": "Shop Speaker",
+      "address": "AA:BB:CC:DD:EE:FF",
+      "connected_since": "2025-05-12T08:30:00Z"
+    }
+  ],
+  "discovered_devices": [
+    {
+      "name": "Shop Speaker",
+      "address": "AA:BB:CC:DD:EE:FF"
+    },
+    {
+      "name": "Office Audio",
+      "address": "11:22:33:44:55:66"
+    }
+  ]
+}
+```
+
+```
+PUT /nodes/{node_id}/audio
+```
+
+Request body:
+```json
+{
+  "audio_enabled": true,
+  "bluetooth_enabled": true,
+  "built_in_volume": 200,
+  "bluetooth_volume": 180
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "audio_enabled": true,
+  "bluetooth_enabled": true,
+  "built_in_volume": 200,
+  "bluetooth_volume": 180
+}
+```
+
+```
+POST /nodes/{node_id}/audio/bluetooth/scan
+```
+
+Response:
+```json
+{
+  "success": true,
+  "discovered_devices": [
+    {
+      "name": "Shop Speaker",
+      "address": "AA:BB:CC:DD:EE:FF"
+    },
+    {
+      "name": "Office Audio",
+      "address": "11:22:33:44:55:66"
+    },
+    {
+      "name": "Personal Headphones",
+      "address": "A1:B2:C3:D4:E5:F6"
+    }
+  ]
+}
+```
+
+```
+POST /nodes/{node_id}/audio/bluetooth/connect
+```
+
+Request body:
+```json
+{
+  "device_address": "11:22:33:44:55:66"
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "device": {
+    "name": "Office Audio",
+    "address": "11:22:33:44:55:66",
+    "connected": true
+  }
+}
+```
+
+```
+POST /nodes/{node_id}/audio/bluetooth/disconnect
+```
+
+Request body:
+```json
+{
+  "device_address": "11:22:33:44:55:66"
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "device": {
+    "name": "Office Audio",
+    "address": "11:22:33:44:55:66",
+    "connected": false
+  }
+}
+```
+
+### Alert Sounds (ESP32-CYD only)
+
+```
+POST /nodes/{node_id}/audio/alert
+```
+
+Request body:
+```json
+{
+  "alert_type": 2,
+  "message": "User access granted"
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "alert_played": true
+}
+```
+
+Alert types:
+- Type 1: Simple beep
+- Type 2: Double beep (typically for access granted)
+- Type 3: Warning alert (typically for errors or issues)
 
 ### RFID Actions
 

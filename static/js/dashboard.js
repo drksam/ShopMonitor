@@ -25,6 +25,11 @@ function updateDashboard() {
                         card.classList.add('border-primary');
                     }
                     
+                    // Handle lead operator status - highlight machines without a lead operator
+                    if (machine.status !== 'offline' && !machine.lead_operator_id) {
+                        card.classList.add('border-danger');
+                    }
+                    
                     // Update status indicator
                     const statusIndicator = machineElement.querySelector('.machine-status');
                     statusIndicator.className = 'machine-status';
@@ -42,6 +47,9 @@ function updateDashboard() {
                             statusText.textContent = 'Timeout';
                             card.classList.add('border-warning');
                             statusIndicator.className = 'machine-status status-warning';
+                        } else if (machine.status !== 'offline' && !machine.lead_operator_id) {
+                            statusText.textContent = 'No Lead';
+                            statusIndicator.className = 'machine-status status-no-lead';
                         } else {
                             statusText.textContent = machine.status.charAt(0).toUpperCase() + machine.status.slice(1);
                         }
@@ -79,21 +87,50 @@ function updateDashboard() {
                             activityElement.querySelector('.last-activity').textContent = formattedTime;
                         }
                         
-                        // Add lead operator badge if applicable
-                        if (machine.is_lead_operator) {
+                        // Add lead operator badge and information
+                        if (machine.lead_operator_id) {
                             // Remove existing badge if it exists
                             const existingBadge = card.querySelector('.lead-operator-badge');
                             if (!existingBadge) {
                                 const leadBadge = document.createElement('div');
                                 leadBadge.className = 'lead-operator-badge';
-                                leadBadge.innerHTML = '<i class="fas fa-star lead-operator-icon"></i>Lead';
+                                leadBadge.innerHTML = '<i class="fas fa-star lead-operator-icon"></i>LEAD';
                                 card.appendChild(leadBadge);
                             }
+                            
+                            // Add lead operator name if not already shown
+                            let leadInfoElement = cardBody.querySelector('.lead-info');
+                            if (!leadInfoElement) {
+                                leadInfoElement = document.createElement('p');
+                                leadInfoElement.className = 'lead-info mt-1';
+                                leadInfoElement.innerHTML = '<i class="fas fa-user-check me-2 text-warning"></i>Lead: <span class="lead-name"></span>';
+                                cardBody.appendChild(leadInfoElement);
+                            }
+                            
+                            // Update lead operator name
+                            const leadNameSpan = leadInfoElement.querySelector('.lead-name');
+                            leadNameSpan.textContent = machine.lead_operator_name || 'Assigned';
+                            
                         } else {
                             // Remove badge if exists and user is not lead
                             const existingBadge = card.querySelector('.lead-operator-badge');
+                            const leadInfoElement = cardBody.querySelector('.lead-info');
+                            
                             if (existingBadge) {
                                 card.removeChild(existingBadge);
+                            }
+                            
+                            if (leadInfoElement) {
+                                cardBody.removeChild(leadInfoElement);
+                            }
+                            
+                            // Add warning about no lead operator
+                            let noLeadWarning = cardBody.querySelector('.no-lead-warning');
+                            if (!noLeadWarning && machine.status !== 'offline') {
+                                noLeadWarning = document.createElement('div');
+                                noLeadWarning.className = 'no-lead-warning mt-2 small text-danger';
+                                noLeadWarning.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>No lead operator assigned';
+                                cardBody.appendChild(noLeadWarning);
                             }
                         }
                     } else {
@@ -101,6 +138,8 @@ function updateDashboard() {
                         const userElement = cardBody.querySelector('.user-info');
                         const activityElement = cardBody.querySelector('.activity-info');
                         const leadBadge = card.querySelector('.lead-operator-badge');
+                        const leadInfoElement = cardBody.querySelector('.lead-info');
+                        const noLeadWarning = cardBody.querySelector('.no-lead-warning');
                         
                         if (userElement) {
                             cardBody.removeChild(userElement);
@@ -112,6 +151,14 @@ function updateDashboard() {
                         
                         if (leadBadge) {
                             card.removeChild(leadBadge);
+                        }
+                        
+                        if (leadInfoElement) {
+                            cardBody.removeChild(leadInfoElement);
+                        }
+                        
+                        if (noLeadWarning) {
+                            cardBody.removeChild(noLeadWarning);
                         }
                         
                         // Add no user message if it doesn't exist

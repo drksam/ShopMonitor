@@ -14,6 +14,11 @@ NetworkManager::NetworkManager() {
   lastNetworkActivity = 0;
   maintenanceMode = false;
   
+  // Initialize HTTPS configuration
+  useHTTPS = false;
+  allowInsecureConnection = false;
+  caCertificate = ""; // Empty by default
+  
   // Initialize error struct
   lastError.code = NET_OK;
   lastError.message = "";
@@ -39,6 +44,13 @@ NetworkManager::NetworkManager() {
     recentErrors[i].recovered = false;
     recentErrors[i].severity = 0;
   }
+  
+  // Initialize certificate pinning
+  useCertFingerprint = false;
+  certFingerprint = "";
+  
+  // Try to load saved fingerprint
+  loadCertFingerprintFromStorage();
 }
 
 bool NetworkManager::begin(const String &ssid, const String &password, const String &nodeName) {
@@ -233,88 +245,11 @@ int NetworkManager::getRSSI() {
 }
 
 bool NetworkManager::sendGET(const String &url, String &response, bool retryOnFail) {
-  if (!isConnected()) {
-    if (retryOnFail) {
-      // Queue for later if retry is enabled
-      queueRequest(url, "GET", "");
-    }
-    logError(NET_WIFI_CONNECT_ERROR, "WiFi not connected during GET request");
-    return false;
-  }
-  
-  // Use lambda to wrap the HTTP operation for retry
-  auto httpOperation = [this, &url, &response]() -> bool {
-    HTTPClient http;
-    http.begin(url);
-    http.setTimeout(responseTimeoutMs);
-    
-    int httpCode = http.GET();
-    
-    if (httpCode > 0) {
-      response = http.getString();
-      http.end();
-      bool success = (httpCode == HTTP_CODE_OK);
-      if (!success) {
-        logError(NET_SERVER_ERROR, "Server returned non-OK status: " + String(httpCode));
-      }
-      return success;
-    } else {
-      String errorMsg = http.errorToString(httpCode);
-      logError(NET_HTTP_ERROR, "HTTP GET Error: " + errorMsg);
-      http.end();
-      return false;
-    }
-  };
-  
-  // Use exponential backoff retry for HTTP operation
-  if (retryOnFail) {
-    return exponentialBackoffRetry(httpOperation, MAX_HTTP_RETRIES, HTTP_INITIAL_RETRY_DELAY);
-  } else {
-    return httpOperation();
-  }
+  return httpRequest(url, "GET", "", response, retryOnFail);
 }
 
 bool NetworkManager::sendPOST(const String &url, const String &jsonPayload, String &response, bool retryOnFail) {
-  if (!isConnected()) {
-    if (retryOnFail) {
-      // Queue for later if retry is enabled
-      queueRequest(url, "POST", jsonPayload);
-    }
-    logError(NET_WIFI_CONNECT_ERROR, "WiFi not connected during POST request");
-    return false;
-  }
-  
-  // Use lambda to wrap the HTTP operation for retry
-  auto httpOperation = [this, &url, &jsonPayload, &response]() -> bool {
-    HTTPClient http;
-    http.begin(url);
-    http.setTimeout(responseTimeoutMs);
-    http.addHeader("Content-Type", "application/json");
-    
-    int httpCode = http.POST(jsonPayload);
-    
-    if (httpCode > 0) {
-      response = http.getString();
-      http.end();
-      bool success = (httpCode == HTTP_CODE_OK);
-      if (!success) {
-        logError(NET_SERVER_ERROR, "Server returned non-OK status: " + String(httpCode));
-      }
-      return success;
-    } else {
-      String errorMsg = http.errorToString(httpCode);
-      logError(NET_HTTP_ERROR, "HTTP POST Error: " + errorMsg);
-      http.end();
-      return false;
-    }
-  };
-  
-  // Use exponential backoff retry for HTTP operation
-  if (retryOnFail) {
-    return exponentialBackoffRetry(httpOperation, MAX_HTTP_RETRIES, HTTP_INITIAL_RETRY_DELAY);
-  } else {
-    return httpOperation();
-  }
+  return httpRequest(url, "POST", jsonPayload, response, retryOnFail);
 }
 
 void NetworkManager::queueRequest(const String &url, const String &method, const String &payload) {
@@ -1151,4 +1086,598 @@ int NetworkManager::countCriticalQueueItems() {
     }
   }
   return count;
+}
+
+// HTTPS configuration methods
+void NetworkManager::setUseHTTPS(bool useSecureHttp) {
+  useHTTPS = useSecureHttp;
+  Serial.println(useSecureHttp ? "HTTPS enabled" : "HTTPS disabled");
+}
+
+void NetworkManager::setCACert(const char* cert) {
+  caCertificate = cert;
+  Serial.println("CA Certificate set for HTTPS connections");
+}
+
+void NetworkManager::setInsecureServerConnection(bool allowInsecure) {
+  allowInsecureConnection = allowInsecure;
+  if (allowInsecure) {
+    Serial.println("WARNING: Insecure server connections are allowed (certificate verification disabled)");
+  } else {
+    Serial.println("Secure server connections required (certificate verification enabled)");
+  }
+}
+
+bool NetworkManager::isHTTPSUrl(const String &url) {
+  return url.startsWith("https://");
+}
+
+// API Authentication methods
+void NetworkManager::setAPIToken(const String &token) {
+  apiToken = token;
+  // Set token expiry to 30 days from now by default if not specified
+  tokenExpiry = millis() + (30UL * 24 * 60 * 60 * 1000);
+  Serial.println("API token set for authentication");
+  saveTokenToStorage();
+}
+
+String NetworkManager::getAPIToken() {
+  return apiToken;
+}
+
+bool NetworkManager::hasValidToken() {
+  // Check if token exists and is not expired
+  if (apiToken.length() == 0) {
+    return false;
+  }
+  
+  // Check if token has expired (accounting for millis() overflow)
+  uint32_t now = millis();
+  uint32_t remainingTime;
+  
+  // Handle potential overflow of millis()
+  if (now < tokenExpiry) {
+    remainingTime = tokenExpiry - now;
+  } else {
+    // Token has expired
+    return false;
+  }
+  
+  // Return true if we have more than 1 hour left on the token
+  return (remainingTime > 3600000); // More than 1 hour remaining
+}
+
+void NetworkManager::setNodeCredentials(const String &id, const String &secret) {
+  nodeId = id;
+  nodeSecret = secret;
+  Serial.print("Node credentials set for ID: ");
+  Serial.println(id);
+}
+
+bool NetworkManager::requestNewToken(const String &serverUrl, const String &nodeId, const String &nodeSecret, String &newToken) {
+  if (!isConnected()) {
+    logError(NET_WIFI_CONNECT_ERROR, "WiFi not connected during token request");
+    return false;
+  }
+  
+  String tokenUrl = serverUrl;
+  if (!tokenUrl.endsWith("/")) {
+    tokenUrl += "/";
+  }
+  tokenUrl += "api/auth/token";
+  
+  // Create token request payload
+  DynamicJsonDocument doc(512);
+  doc["node_id"] = nodeId;
+  doc["secret"] = nodeSecret;
+  doc["device_info"] = WiFi.macAddress();
+  
+  String payload;
+  serializeJson(doc, payload);
+  String response;
+  
+  // Send token request
+  Serial.println("Requesting new API token from server");
+  
+  // Use standard HTTP client for initial token request
+  HTTPClient http;
+  
+  // Determine if we should use HTTPS
+  if (isHTTPSUrl(tokenUrl) || useHTTPS) {
+    WiFiClientSecure secureClient;
+    
+    // Configure TLS/SSL security
+    if (caCertificate.length() > 0) {
+      secureClient.setCACert(caCertificate.c_str());
+    } else if (allowInsecureConnection) {
+      secureClient.setInsecure();
+      Serial.println("Warning: Using insecure HTTPS connection for token request");
+    } else {
+      logError(NET_TLS_ERROR, "No CA certificate provided for HTTPS and insecure connections not allowed");
+      return false;
+    }
+    
+    http.begin(secureClient, tokenUrl);
+  } else {
+    http.begin(tokenUrl);
+  }
+  
+  http.setTimeout(responseTimeoutMs);
+  http.addHeader("Content-Type", "application/json");
+  
+  int httpCode = http.POST(payload);
+  
+  if (httpCode > 0) {
+    response = http.getString();
+    
+    if (httpCode == HTTP_CODE_OK || httpCode == 201) {
+      // Parse response to extract token
+      DynamicJsonDocument respDoc(1024);
+      DeserializationError error = deserializeJson(respDoc, response);
+      
+      if (error) {
+        logError(NET_JSON_ERROR, "Failed to parse token response: " + String(error.c_str()));
+        http.end();
+        return false;
+      }
+      
+      // Check if we have a token in the response
+      if (respDoc.containsKey("access_token") || respDoc.containsKey("token")) {
+        // Get token from response
+        if (respDoc.containsKey("access_token")) {
+          apiToken = respDoc["access_token"].as<String>();
+        } else {
+          apiToken = respDoc["token"].as<String>();
+        }
+        
+        // Get token expiry if available
+        if (respDoc.containsKey("expires_in")) {
+          // Convert seconds to milliseconds and add to current time
+          uint32_t expiresInMs = respDoc["expires_in"].as<uint32_t>() * 1000;
+          tokenExpiry = millis() + expiresInMs;
+        } else {
+          // Default to 30-day expiration if not specified
+          tokenExpiry = millis() + (30UL * 24 * 60 * 60 * 1000);
+        }
+        
+        newToken = apiToken;
+        saveTokenToStorage();
+        
+        Serial.println("Successfully obtained new API token");
+        http.end();
+        return true;
+      } else {
+        logError(NET_AUTH_ERROR, "No token field in server response");
+      }
+    } else {
+      logError(NET_SERVER_ERROR, "Server returned non-OK status for token request: " + String(httpCode));
+    }
+  } else {
+    logError(NET_HTTP_ERROR, "HTTP error during token request: " + http.errorToString(httpCode));
+  }
+  
+  http.end();
+  return false;
+}
+
+void NetworkManager::saveTokenToStorage() {
+  if (!SPIFFS.begin(true)) {
+    Serial.println("Failed to mount SPIFFS for token storage");
+    return;
+  }
+  
+  File file = SPIFFS.open("/api_token.json", "w");
+  if (!file) {
+    Serial.println("Failed to open token file for writing");
+    return;
+  }
+  
+  DynamicJsonDocument doc(512);
+  doc["token"] = apiToken;
+  doc["expiry"] = tokenExpiry;
+  doc["node_id"] = nodeId;
+  
+  if (serializeJson(doc, file) == 0) {
+    Serial.println("Failed to write token to file");
+  } else {
+    Serial.println("API token saved to persistent storage");
+  }
+  
+  file.close();
+}
+
+void NetworkManager::loadTokenFromStorage() {
+  if (!SPIFFS.begin(true)) {
+    Serial.println("Failed to mount SPIFFS for token loading");
+    return;
+  }
+  
+  if (!SPIFFS.exists("/api_token.json")) {
+    Serial.println("No API token file found");
+    return;
+  }
+  
+  File file = SPIFFS.open("/api_token.json", "r");
+  if (!file) {
+    Serial.println("Failed to open token file for reading");
+    return;
+  }
+  
+  DynamicJsonDocument doc(512);
+  DeserializationError error = deserializeJson(doc, file);
+  file.close();
+  
+  if (error) {
+    Serial.println("Failed to parse token file: " + String(error.c_str()));
+    return;
+  }
+  
+  apiToken = doc["token"].as<String>();
+  tokenExpiry = doc["expiry"].as<uint32_t>();
+  
+  // Also load the node ID if available
+  if (doc.containsKey("node_id")) {
+    nodeId = doc["node_id"].as<String>();
+  }
+  
+  Serial.println("API token loaded from persistent storage");
+}
+
+bool NetworkManager::refreshTokenIfNeeded(const String &serverUrl) {
+  if (!hasValidToken() && nodeId.length() > 0 && nodeSecret.length() > 0) {
+    Serial.println("Token needs refreshing, requesting new token");
+    String newToken;
+    return requestNewToken(serverUrl, nodeId, nodeSecret, newToken);
+  }
+  return true;
+}
+
+// Helper methods for TLS/SSL Certificate Management
+const char* DEFAULT_ROOT_CA = \
+"-----BEGIN CERTIFICATE-----\n" \
+"MIIDujCCAqKgAwIBAgILBAAAAAABD4Ym5g0wDQYJKoZIhvcNAQEFBQAwTDEgMB4G\n" \
+"A1UECxMXR2xvYmFsU2lnbiBSb290IENBIC0gUjIxEzARBgNVBAoTCkdsb2JhbFNp\n" \
+"Z24xEzARBgNVBAMTCkdsb2JhbFNpZ24wHhcNMDYxMjE1MDgwMDAwWhcNMzMwNTMw\n" \
+"MTAwMDAwWjBMMSAwHgYDVQQLExdHbG9iYWxTaWduIFJvb3QgQ0EgLSBSMjETMBEG\n" \
+"A1UEChMKR2xvYmFsU2lnbjETMBEGA1UEAxMKR2xvYmFsU2lnbjCCASIwDQYJKoZI\n" \
+"hvcNAQEBBQADggEPADCCAQoCggEBAKbPJA6+Lm8omUVCxKs+IVSbC9N/hHD6ErPL\n" \
+"v4dfxn+G07IwXNb9rfF73OX4YJYJkhD10FPe+3t+c4isUoh7SqbKSaZeqKeMWhG8\n" \
+"eoLrvozps6yWJQeXSpkqBy+0Hne/ig+1AnwblrjFuTosvNYSuetZfeLQBoZfXklq\n" \
+"tTleiDTsvHgMCJiEbKjNS7SgfQx5TfC4LcshytVsW33hoCmEofnTlEnLJGKRILzd\n" \
+"C9XZzPnqJworc5HGnRusyMvo4KD0L5CLTfuwNhv2GXqF4G3yYROIXJ/gkwpRl4pa\n" \
+"zq+r1feqCapgvdzZX99yqWATXgAByUr6P6TqBwMhAo6CygPCm48CAwEAAaOBnDCB\n" \
+"mTAOBgNVHQ8BAf8EBAMCAQYwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUm+IH\n" \
+"V2ccHsBqBt5ZtJot39wZhi4wNgYDVR0fBC8wLTAroCmgJ4YlaHR0cDovL2NybC5n\n" \
+"bG9iYWxzaWduLm5ldC9yb290LXIyLmNybDAfBgNVHSMEGDAWgBSb4gdXZxwewGoG\n" \
+"3lm0mi3f3BmGLjANBgkqhkiG9w0BAQUFAAOCAQEAmYFThxxol4aR7OBKuEQLq4Gs\n" \
+"J0/WwbgcQ3izDJr86iw8bmEbTUsp9Z8FHSbBuOmDAGJFtqkIk7mpM0sYmsL4h4hO\n" \
+"291xNBrBVNpGP+DTKqttVCL1OmLNIG+6KYnX3ZHu01yiPqFbQfXf5WRDLenVOavS\n" \
+"ot+3i9DAgBkcRcAtjOj4LaR0VknFBbVPFd5uRHg5h6h+u/N5GJG79G+dwfCMNYxd\n" \
+"AfvDbbnvRG15RjF+Cv6pgsH/76tuIMRQyV+dTZsXjAzlAcmgQWpzU/qlULRuJQ/7\n" \
+"TBj0/VLZjmmx6BEP3ojY+x1J96relc8geMJgEtslQIxq/H5COEBkEveegeGTLg==\n" \
+"-----END CERTIFICATE-----\n";
+
+bool NetworkManager::setServerCertificate(const String &certType) {
+  // Set one of the common root CAs or a custom one
+  if (certType == "GlobalSign") {
+    setCACert(DEFAULT_ROOT_CA);
+    Serial.println("Using GlobalSign Root CA for HTTPS");
+    return true;
+  } 
+  else if (certType == "Custom" && SPIFFS.begin()) {
+    // Try to load custom certificate from SPIFFS
+    if (SPIFFS.exists("/cert/ca.pem")) {
+      File certFile = SPIFFS.open("/cert/ca.pem", "r");
+      if (certFile) {
+        String cert;
+        while (certFile.available()) {
+          cert += certFile.readString();
+        }
+        certFile.close();
+        
+        if (cert.length() > 0) {
+          setCACert(cert.c_str());
+          Serial.println("Using custom CA certificate from SPIFFS");
+          return true;
+        }
+      }
+    }
+    Serial.println("Failed to load custom certificate, fallback to insecure");
+    return false;
+  }
+  else if (certType == "None") {
+    setInsecureServerConnection(true);
+    Serial.println("WARNING: HTTPS certificate validation disabled!");
+    return true;
+  }
+  
+  return false;
+}
+
+bool NetworkManager::loadCertificateFromSPIFFS(const String &filename) {
+  if (!SPIFFS.begin()) {
+    Serial.println("Failed to mount SPIFFS for certificate loading");
+    return false;
+  }
+  
+  if (!SPIFFS.exists(filename)) {
+    Serial.println("Certificate file not found: " + filename);
+    return false;
+  }
+  
+  File certFile = SPIFFS.open(filename, "r");
+  if (!certFile) {
+    Serial.println("Failed to open certificate file");
+    return false;
+  }
+  
+  String cert;
+  while (certFile.available()) {
+    cert += certFile.readString();
+  }
+  certFile.close();
+  
+  if (cert.length() > 0) {
+    setCACert(cert.c_str());
+    Serial.println("Loaded certificate from: " + filename);
+    return true;
+  }
+  
+  return false;
+}
+
+bool NetworkManager::saveCertificateToSPIFFS(const String &filename, const String &certContent) {
+  if (!SPIFFS.begin()) {
+    Serial.println("Failed to mount SPIFFS for certificate saving");
+    return false;
+  }
+  
+  // Ensure the directory exists
+  if (filename.indexOf("/") > 0) {
+    String dir = filename.substring(0, filename.lastIndexOf("/"));
+    if (!SPIFFS.exists(dir)) {
+      // Create directory structure
+      SPIFFS.mkdir(dir);
+    }
+  }
+  
+  File certFile = SPIFFS.open(filename, "w");
+  if (!certFile) {
+    Serial.println("Failed to open certificate file for writing");
+    return false;
+  }
+  
+  size_t bytesWritten = certFile.print(certContent);
+  certFile.close();
+  
+  if (bytesWritten == certContent.length()) {
+    Serial.println("Certificate saved to: " + filename);
+    return true;
+  } else {
+    Serial.println("Failed to write certificate data");
+    return false;
+  }
+}
+
+// Certificate pinning implementation
+void NetworkManager::setCertFingerprint(const String &fingerprint) {
+  certFingerprint = fingerprint;
+  useCertFingerprint = true;
+  Serial.println("Certificate fingerprint set for pinning: " + fingerprint);
+  saveCertFingerprintToStorage();
+}
+
+bool NetworkManager::verifyCertificateFingerprint(const String &host) {
+  if (!useCertFingerprint || certFingerprint.length() == 0) {
+    return true; // Skip verification if fingerprint not set
+  }
+  
+  WiFiClientSecure client;
+  client.setInsecure(); // Initially set to insecure to establish connection
+  
+  Serial.println("Verifying certificate for: " + host);
+  if (!client.connect(host.c_str(), 443)) {
+    Serial.println("Connection failed for certificate verification");
+    return false;
+  }
+  
+  // Get the peer certificate
+  const mbedtls_x509_crt* cert = client.getPeerCertificate();
+  if (!cert) {
+    Serial.println("Failed to get peer certificate");
+    return false;
+  }
+  
+  // Calculate SHA-1 fingerprint
+  byte fingerprint[20];
+  mbedtls_sha1(cert->raw.p, cert->raw.len, fingerprint);
+  
+  // Format the fingerprint as hex string with colons
+  String calculatedFingerprint = "";
+  for (int i = 0; i < sizeof(fingerprint); i++) {
+    if (i > 0) calculatedFingerprint += ":";
+    char hex[3];
+    sprintf(hex, "%02X", fingerprint[i]);
+    calculatedFingerprint += hex;
+  }
+  
+  Serial.println("Certificate fingerprint: " + calculatedFingerprint);
+  Serial.println("Expected fingerprint:    " + certFingerprint);
+  
+  bool result = (calculatedFingerprint.equalsIgnoreCase(certFingerprint));
+  if (!result) {
+    logError(NET_CERT_VERIFY_ERROR, "Certificate fingerprint mismatch");
+  }
+  
+  return result;
+}
+
+bool NetworkManager::loadCertFingerprintFromStorage() {
+  if (!SPIFFS.begin(true)) {
+    Serial.println("Failed to mount SPIFFS for certificate fingerprint loading");
+    return false;
+  }
+  
+  if (!SPIFFS.exists(CERT_FINGERPRINT_FILE)) {
+    Serial.println("No certificate fingerprint file found");
+    return false;
+  }
+  
+  File file = SPIFFS.open(CERT_FINGERPRINT_FILE, "r");
+  if (!file) {
+    Serial.println("Failed to open fingerprint file");
+    return false;
+  }
+  
+  certFingerprint = file.readString();
+  certFingerprint.trim(); // Remove whitespace
+  file.close();
+  
+  if (certFingerprint.length() > 0) {
+    useCertFingerprint = true;
+    Serial.println("Loaded certificate fingerprint: " + certFingerprint);
+    return true;
+  }
+  
+  return false;
+}
+
+void NetworkManager::saveCertFingerprintToStorage() {
+  if (!SPIFFS.begin(true)) {
+    Serial.println("Failed to mount SPIFFS for certificate fingerprint saving");
+    return;
+  }
+  
+  File file = SPIFFS.open(CERT_FINGERPRINT_FILE, "w");
+  if (!file) {
+    Serial.println("Failed to open fingerprint file for writing");
+    return;
+  }
+  
+  if (file.print(certFingerprint)) {
+    Serial.println("Certificate fingerprint saved to storage");
+  } else {
+    Serial.println("Failed to write certificate fingerprint");
+  }
+  
+  file.close();
+}
+
+// Update setupSecureClient to use certificate pinning
+bool NetworkManager::setupSecureClient(WiFiClientSecure &secureClient) {
+  // Configure TLS/SSL security
+  if (useCertFingerprint && certFingerprint.length() > 0) {
+    secureClient.setFingerprint(certFingerprint.c_str());
+    Serial.println("Using certificate fingerprint for verification");
+    return true;
+  } else if (caCertificate.length() > 0) {
+    secureClient.setCACert(caCertificate.c_str());
+    Serial.println("Using CA certificate for verification");
+    return true;
+  } else if (allowInsecureConnection) {
+    secureClient.setInsecure();
+    Serial.println("Warning: Using insecure HTTPS connection");
+    return true;
+  } else {
+    logError(NET_TLS_ERROR, "No certificate verification method available");
+    return false;
+  }
+}
+
+// Enhanced HTTP request method that handles both HTTP and HTTPS
+bool NetworkManager::httpRequest(const String &url, const String &method, 
+                                const String &payload, String &response, 
+                                bool retryOnFail) {
+  if (!isConnected()) {
+    if (retryOnFail) {
+      // Queue for later if retry is enabled
+      queueRequest(url, method, payload);
+    }
+    logError(NET_WIFI_CONNECT_ERROR, "WiFi not connected during HTTP request");
+    return false;
+  }
+  
+  // Check if this is an HTTPS URL or if global HTTPS is enabled
+  bool isSecure = isHTTPSUrl(url) || useHTTPS;
+  
+  // Use lambda to wrap the HTTP operation for retry
+  auto httpOperation = [this, &url, &method, &payload, &response, isSecure]() -> bool {
+    HTTPClient http;
+    
+    if (isSecure) {
+      // Use secure client for HTTPS
+      WiFiClientSecure secureClient;
+      
+      if (!setupSecureClient(secureClient)) {
+        return false;
+      }
+      
+      http.begin(secureClient, url);
+    } else {
+      // Standard HTTP
+      http.begin(url);
+    }
+    
+    http.setTimeout(responseTimeoutMs);
+    
+    // Add common headers
+    http.addHeader("Content-Type", "application/json");
+    
+    // Add API token if available
+    if (hasValidToken()) {
+      http.addHeader("Authorization", "Bearer " + apiToken);
+    }
+    
+    // Track activity time
+    lastNetworkActivity = millis();
+    
+    // Execute the request based on method
+    int httpCode = -1;
+    
+    if (method == "GET") {
+      httpCode = http.GET();
+    } else if (method == "POST") {
+      httpCode = http.POST(payload);
+    } else if (method == "PUT") {
+      httpCode = http.PUT(payload);
+    } else if (method == "DELETE") {
+      httpCode = http.sendRequest("DELETE", payload);
+    } else if (method == "PATCH") {
+      httpCode = http.sendRequest("PATCH", payload);
+    } else {
+      Serial.println("Unsupported HTTP method: " + method);
+      http.end();
+      return false;
+    }
+    
+    // Process the response
+    if (httpCode > 0) {
+      response = http.getString();
+      bool success = (httpCode == HTTP_CODE_OK || httpCode == 201 || httpCode == 202);
+      
+      if (!success) {
+        String errorMsg = "Server returned non-OK status: " + String(httpCode);
+        if (httpCode == 401 || httpCode == 403) {
+          logError(NET_AUTH_ERROR, errorMsg, 2);
+        } else {
+          logError(NET_SERVER_ERROR, errorMsg, 2);
+        }
+      }
+      
+      http.end();
+      return success;
+    } else {
+      String errorMsg = http.errorToString(httpCode);
+      logError(NET_HTTP_ERROR, method + " Error: " + errorMsg, 2);
+      http.end();
+      return false;
+    }
+  };
+  
+  // Use exponential backoff retry for HTTP operation
+  if (retryOnFail) {
+    return exponentialBackoffRetry(httpOperation, MAX_HTTP_RETRIES, HTTP_INITIAL_RETRY_DELAY);
+  } else {
+    return httpOperation();
+  }
 }

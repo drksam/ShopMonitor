@@ -1,0 +1,14 @@
+the ESP32(CYD) needs audio capabilities
+it needs to receive an audio stream from a network broadcast 
+--this broadcast needs to be from a separate pc (not one running ShopMonitor) so it should be self contained
+--the pc side should show up as an audio output in PipeWire (NO WINDOWS OR MAC SUPPORT)
+--there should be no ip or mac or id settings for this feature. 
+---all (CYD) firmware devices on the network should automatically receive the stream.
+the audio needs to be sent to the (CYD)'s built in audio out
+the audio needs to be broadcasted out to multi-point Bluetooth
+there needs to be a ui for config of bluetooth devices and builtin audio volume
+the (CYD) needs to be able to make an alert sound when it gets an alert 
+the audio needs to be silenced if any estop on the system is pressed.
+small latency (especially between bluetooth and built in audio) is fine. 
+prioritize a balance between accurate timing and audio quality.
+the (CYD) does NOT need any audio controls like play skip or pause ONLY volume and bluetooth connection

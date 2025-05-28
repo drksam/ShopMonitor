@@ -89,6 +89,7 @@
                                 <th>Location</th>
                                 <th>Controller</th>
                                 <th>Status</th>
+                                <th>Lead Operator</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -116,26 +117,47 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm btn-outline-primary me-1" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#editMachineModal" 
-                                            data-id="{{ machine.id }}"
-                                            data-machine-id="{{ machine.machine_id }}"
-                                            data-name="{{ machine.name }}"
-                                            data-description="{{ machine.description or '' }}"
-                                            data-zone-id="{{ machine.zone_id }}"
-                                            data-ip-address="{{ machine.ip_address or '' }}"
-                                            data-node-id="{{ machine.node_id or '' }}"
-                                            data-node-port="{{ machine.node_port }}">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#deleteMachineModal"
-                                            data-id="{{ machine.id }}"
-                                            data-name="{{ machine.name }}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                    {% if machine.lead_operator %}
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-warning text-dark me-2">
+                                            <i class="fas fa-star lead-operator-icon"></i> Lead
+                                        </span>
+                                        <span>{{ machine.lead_operator.name }}</span>
+                                    </div>
+                                    {% else %}
+                                        {% if machine.status != 'offline' %}
+                                        <span class="badge bg-danger">No Lead</span>
+                                        {% else %}
+                                        <span class="text-muted">—</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="{{ url_for('machine_sessions.view_machine_sessions', machine_id=machine.id) }}" class="btn btn-sm btn-outline-info me-1" title="View Sessions">
+                                            <i class="fas fa-users"></i>
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-primary me-1" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#editMachineModal" 
+                                                data-id="{{ machine.id }}"
+                                                data-machine-id="{{ machine.machine_id }}"
+                                                data-name="{{ machine.name }}"
+                                                data-description="{{ machine.description or '' }}"
+                                                data-zone-id="{{ machine.zone_id }}"
+                                                data-ip-address="{{ machine.ip_address or '' }}"
+                                                data-node-id="{{ machine.node_id or '' }}"
+                                                data-node-port="{{ machine.node_port }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteMachineModal"
+                                                data-id="{{ machine.id }}"
+                                                data-name="{{ machine.name }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}

@@ -283,6 +283,57 @@ class RFIDUser(db.Model):
         ).first()
         
         return auth is not None
+    
+    def can_be_lead_on_machine(self, machine_id):
+        """Check if user can be lead operator on specific machine
+        
+        Args:
+            machine_id: Integer ID of the machine to check
+            
+        Returns:
+            bool: True if user can be a lead operator on this machine
+        """
+        # First check if user can be a lead operator at all
+        if not self.can_be_lead:
+            return False
+            
+        # Admin override users can be lead on any machine
+        if self.is_admin_override:
+            return True
+            
+        # Check specific machine authorization
+        auth = MachineAuthorization.query.filter_by(
+            user_id=self.id, 
+            machine_id=machine_id,
+            can_be_lead=True
+        ).first()
+        
+        return auth is not None
+    
+    def can_login_with_others(self, machine_id, current_user_count):
+        """Check if user can log in with other users already on machine
+        
+        Args:
+            machine_id: Integer ID of the machine to check
+            current_user_count: Number of users currently logged in
+            
+        Returns:
+            bool: True if user can log in with current users
+        """
+        # Admin override can always log in
+        if self.is_admin_override:
+            return True
+            
+        # Get machine authorization
+        auth = MachineAuthorization.query.filter_by(
+            user_id=self.id, 
+            machine_id=machine_id
+        ).first()
+        
+        if not auth:
+            return False
+            
+        return auth.can_login_with_current_users(current_user_count)
         
     def get_authorized_machine_ids(self):
         """Get list of machine IDs this user is authorized to use
@@ -296,6 +347,121 @@ class RFIDUser(db.Model):
             
         # Otherwise return specifically authorized machines
         return [auth.machine_id for auth in self.authorized_machines]
+    
+    def get_lead_eligible_machines(self):
+        """Get list of machines where user can be lead operator
+        
+        Returns:
+            list: List of machine objects
+        """
+        if not self.can_be_lead:
+            return []
+            
+        if self.is_admin_override:
+            return Machine.query.all()
+            
+        # Get machines where this user can be lead
+        return Machine.query.join(MachineAuthorization).filter(
+            MachineAuthorization.user_id == self.id,
+            MachineAuthorization.can_be_lead == True
+        ).all()
+    
+    def transfer_lead_status(self, from_machine_id, to_machine_id, reason="transfer"):
+        """Transfer lead status from one machine to another
+        
+        Args:
+            from_machine_id: Machine ID to transfer from
+            to_machine_id: Machine ID to transfer to  
+            reason: Reason for transfer (default "transfer")
+            
+        Returns:
+            bool: True if transfer was successful
+        """
+        # Verify user is currently lead on from_machine
+        from_machine = Machine.query.get(from_machine_id)
+        if not from_machine or from_machine.lead_operator_id != self.id:
+            return False
+            
+        # Verify user can be lead on to_machine
+        if not self.can_be_lead_on_machine(to_machine_id):
+            return False
+            
+        # Get to_machine
+        to_machine = Machine.query.get(to_machine_id)
+        if not to_machine:
+            return False
+            
+        # Close current lead history
+        current_history = LeadOperatorHistory.query.filter_by(
+            machine_id=from_machine_id,
+            user_id=self.id,
+            removed_time=None
+        ).order_by(LeadOperatorHistory.assigned_time.desc()).first()
+        
+        if current_history:
+            current_history.removed_time = datetime.datetime.utcnow()
+            current_history.removal_reason = reason
+        
+        # If there's an existing lead on the destination machine, remove them
+        if to_machine.lead_operator_id:
+            # Get their session and update it
+            lead_session = MachineSession.query.filter_by(
+                machine_id=to_machine_id,
+                user_id=to_machine.lead_operator_id,
+                logout_time=None,
+                is_lead=True
+            ).first()
+            
+            if lead_session:
+                lead_session.is_lead = False
+            
+            # Close their lead history
+            lead_history = LeadOperatorHistory.query.filter_by(
+                machine_id=to_machine_id,
+                user_id=to_machine.lead_operator_id,
+                removed_time=None
+            ).order_by(LeadOperatorHistory.assigned_time.desc()).first()
+            
+            if lead_history:
+                lead_history.removed_time = datetime.datetime.utcnow()
+                lead_history.removal_reason = "override"
+        
+        # Update the machine lead operator
+        to_machine.lead_operator_id = self.id
+        
+        # Create new lead history record
+        new_history = LeadOperatorHistory(
+            machine_id=to_machine_id,
+            user_id=self.id,
+            assigned_time=datetime.datetime.utcnow(),
+            assigned_by_id=self.id
+        )
+        
+        # Add the new history and get the user's session on to_machine
+        db.session.add(new_history)
+        
+        # Find or create session on the destination machine
+        session = MachineSession.query.filter_by(
+            machine_id=to_machine_id,
+            user_id=self.id,
+            logout_time=None
+        ).first()
+        
+        if session:
+            session.is_lead = True
+        else:
+            # Create new session
+            session = MachineSession(
+                machine_id=to_machine_id,
+                user_id=self.id,
+                is_lead=True,
+                login_time=datetime.datetime.utcnow()
+            )
+            db.session.add(session)
+        
+        # Save all changes
+        db.session.commit()
+        return True
     
     @property
     def active_sessions(self):
@@ -328,10 +494,31 @@ class MachineAuthorization(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('rfid_user.id'), nullable=False)
     machine_id = db.Column(db.Integer, db.ForeignKey('machine.id'), nullable=False)
     can_be_lead = db.Column(db.Boolean, default=False)  # Whether user can be lead operator on this machine
+    multi_user_allowed = db.Column(db.Boolean, default=True)  # Whether this user can log in when others are already logged in
+    max_concurrent_users = db.Column(db.Integer, default=3)  # Maximum number of users allowed simultaneously
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     
     # Add a unique constraint to prevent duplicate authorizations
     __table_args__ = (db.UniqueConstraint('user_id', 'machine_id'),)
+    
+    # Relationship to machine for easier access
+    machine = db.relationship('Machine', backref=db.backref('authorizations', lazy='dynamic'))
+    
+    def can_login_with_current_users(self, current_user_count):
+        """Check if user can log in with the current number of users
+        
+        Args:
+            current_user_count: Number of users currently logged in
+            
+        Returns:
+            bool: True if user can log in
+        """
+        # If multi-user is not allowed, only can log in if no one else is on the machine
+        if not self.multi_user_allowed and current_user_count > 0:
+            return False
+            
+        # Check against max concurrent users
+        return current_user_count < self.max_concurrent_users
 
 # Lead Operator History for tracking lead changes
 class LeadOperatorHistory(db.Model):

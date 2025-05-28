@@ -158,6 +158,43 @@
                 <!-- Will be populated by JavaScript -->
             </div>
             
+            {% if machine.lead_operator and current_user.id == machine.lead_operator.id %}
+            <!-- Lead Transfer Quick Panel -->
+            <div class="card shadow-sm mb-4 border-warning">
+                <div class="card-header bg-warning bg-opacity-25">
+                    <h5 class="mb-0">
+                        <i class="fas fa-star me-2"></i>
+                        Lead Operator Controls
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-0">
+                                <strong>You are the lead operator</strong> for this machine. 
+                                {% if active_sessions|length > 1 %}
+                                You can transfer lead status to another active user.
+                                {% else %}
+                                No other users are currently active to transfer lead status to.
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div>
+                            {% if active_sessions|length > 1 %}
+                            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#leadTransferModal">
+                                <i class="fas fa-exchange-alt me-2"></i> Transfer Lead Status
+                            </button>
+                            {% else %}
+                            <button type="button" class="btn btn-warning" disabled>
+                                <i class="fas fa-exchange-alt me-2"></i> Transfer Lead Status
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
             <!-- Active Sessions Card -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-light">
@@ -324,6 +361,87 @@
                 </div>
                 {% endif %}
             </div>
+            
+            <!-- Lead Operator History -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-star me-2"></i>
+                        Lead Operator History
+                    </h5>
+                    <button class="btn btn-sm btn-outline-secondary" id="refreshLeadHistory">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div id="lead-history-container">
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Loading lead operator history...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lead Transfer Modal -->
+<div class="modal fade" id="leadTransferModal" tabindex="-1" aria-labelledby="leadTransferModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning bg-opacity-10">
+                <h5 class="modal-title" id="leadTransferModalLabel">
+                    <i class="fas fa-exchange-alt me-2"></i> Transfer Lead Operator Status
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Select a user to transfer your lead operator status to:</p>
+                
+                {% if active_sessions|length <= 1 %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    There are no other active users to transfer lead status to.
+                </div>
+                {% else %}
+                <form id="leadTransferForm">
+                    <div class="list-group mb-3">
+                        {% for session in active_sessions %}
+                            {% if session.user_id != machine.lead_operator_id %}
+                            <label class="list-group-item list-group-item-action">
+                                <div class="d-flex align-items-center">
+                                    <input class="form-check-input me-3" type="radio" name="new_lead" value="{{ session.user.id }}">
+                                    <div>
+                                        <div class="fw-bold">{{ session.user.name }}</div>
+                                        <div class="small text-muted">
+                                            Logged in: <span class="session-time-static">{{ session.login_time.strftime('%H:%M:%S') }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="alert alert-warning small">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Transferring lead status will make the selected user responsible for this machine. You will remain logged in as a regular operator.
+                    </div>
+                </form>
+                <div id="transfer-error" class="alert alert-danger d-none"></div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                {% if active_sessions|length > 1 %}
+                <button type="button" class="btn btn-warning" id="confirmLeadTransfer">
+                    <i class="fas fa-user-check me-2"></i> Transfer Lead Status
+                </button>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
@@ -421,6 +539,109 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     
+    // Function to load lead operator history
+    function loadLeadOperatorHistory() {
+        fetch(`/api/machines/{{ machine.id }}/lead_status`)
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('lead-history-container');
+                
+                if (!data.recent_lead_changes || data.recent_lead_changes.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-4">
+                            <div class="text-muted">
+                                <i class="fas fa-info-circle fa-2x mb-3"></i>
+                                <p>No lead operator history available for this machine.</p>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let tableHtml = `
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Operator</th>
+                                    <th>Status</th>
+                                    <th>By</th>
+                                    <th>Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                data.recent_lead_changes.forEach(entry => {
+                    // Format time
+                    const assignedTime = new Date(entry.assigned_time);
+                    const assignedTimeStr = assignedTime.toLocaleString();
+                    
+                    // Format reason
+                    let reasonText = 'Assignment';
+                    let reasonClass = 'text-success';
+                    
+                    if (entry.reason) {
+                        if (entry.reason === 'logout') {
+                            reasonText = 'User Logout';
+                            reasonClass = 'text-danger';
+                        } else if (entry.reason === 'transfer') {
+                            reasonText = 'Lead Transfer';
+                            reasonClass = 'text-primary';
+                        } else if (entry.reason === 'reassigned') {
+                            reasonText = 'Admin Reassignment';
+                            reasonClass = 'text-warning';
+                        }
+                    }
+                    
+                    // Format status
+                    const hasRemoved = entry.removed_time !== null;
+                    const statusText = hasRemoved ? 'Ended' : 'Active';
+                    const statusClass = hasRemoved ? 'text-danger' : 'text-success';
+                    
+                    tableHtml += `
+                        <tr>
+                            <td>${assignedTimeStr}</td>
+                            <td>
+                                <strong>${entry.user_name}</strong>
+                            </td>
+                            <td>
+                                <span class="${statusClass}">${statusText}</span>
+                            </td>
+                            <td>${entry.assigned_by || 'System'}</td>
+                            <td>
+                                <span class="${reasonClass}">${reasonText}</span>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                tableHtml += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                container.innerHTML = tableHtml;
+            })
+            .catch(error => {
+                console.error('Error loading lead operator history:', error);
+                const container = document.getElementById('lead-history-container');
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <div class="text-danger">
+                            <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                            <p>Failed to load lead operator history. Please try again.</p>
+                        </div>
+                        <button class="btn btn-outline-primary btn-sm mt-2" onclick="loadLeadOperatorHistory()">
+                            <i class="fas fa-sync-alt me-1"></i> Try Again
+                        </button>
+                    </div>
+                `;
+            });
+    }
+    
     // Update times immediately and periodically
     updateSessionTimes();
     setInterval(updateSessionTimes, 1000);
@@ -429,18 +650,58 @@ document.addEventListener('DOMContentLoaded', function() {
     checkMachineStartStatus();
     setInterval(checkMachineStartStatus, 30000); // Check every 30 seconds
     
-    // Add lead transfer capabilities if current user is the lead
-    const userSession = document.querySelector('#session-timer');
-    if (userSession && userSession.parentElement.querySelector('.badge.bg-warning')) {
-        // Current user is lead operator, add transfer option
-        const transferBtn = document.createElement('button');
-        transferBtn.className = 'btn btn-outline-warning mt-3';
-        transferBtn.innerHTML = '<i class="fas fa-exchange-alt me-2"></i> Transfer Lead Operator Role';
+    // Load lead operator history initially
+    loadLeadOperatorHistory();
+    
+    // Set up refresh button for lead history
+    document.getElementById('refreshLeadHistory').addEventListener('click', loadLeadOperatorHistory);
+    
+    // Handle lead transfer
+    const transferBtn = document.getElementById('confirmLeadTransfer');
+    if (transferBtn) {
         transferBtn.addEventListener('click', function() {
-            // Implement lead transfer modal or redirect to transfer page
-            window.location.href = '{{ url_for("machine_sessions.assign_lead_operator", machine_id=machine.id) }}';
+            // Get selected new lead
+            const selectedLead = document.querySelector('input[name="new_lead"]:checked');
+            if (!selectedLead) {
+                const errorDiv = document.getElementById('transfer-error');
+                errorDiv.textContent = 'Please select a user to transfer lead status to.';
+                errorDiv.classList.remove('d-none');
+                return;
+            }
+            
+            // Hide any previous errors
+            document.getElementById('transfer-error').classList.add('d-none');
+            
+            // Make API call to transfer lead status
+            fetch(`/api/machines/{{ machine.id }}/assign_lead`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    user_id: selectedLead.value
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Failed to transfer lead operator status');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Success - reload the page to show updated status
+                window.location.reload();
+            })
+            .catch(error => {
+                // Show error message
+                const errorDiv = document.getElementById('transfer-error');
+                errorDiv.textContent = error.message;
+                errorDiv.classList.remove('d-none');
+            });
         });
-        userSession.parentElement.appendChild(transferBtn);
     }
 });
 </script>

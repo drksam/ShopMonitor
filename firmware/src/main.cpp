@@ -1123,6 +1123,91 @@ NetworkManager networkManager;
 RFIDHandler rfidHandler;
 WebUI webUI(configManager, networkManager);
 
+// Function to handle certificate verification failures
+bool handleCertificateVerification(const String& fingerprint, bool isFirstConnection) {
+  Serial.println("Certificate verification check:");
+  Serial.println("Received fingerprint: " + fingerprint);
+  
+  if (isFirstConnection) {
+    Serial.println("First connection to server, storing certificate fingerprint");
+    // Log the initial fingerprint storage
+    Serial.println("Stored fingerprint: " + fingerprint);
+    return true; // Accept the certificate on first connection
+  }
+  
+  // For user interface implementations with a display,
+  // we could show the fingerprint and ask for confirmation
+  
+  // For headless devices, we'll implement three approaches:
+  // 1. Serial console prompt for development/debugging
+  // 2. Physical button press option for production
+  // 3. Automatic time-limited acceptance for unattended devices
+  
+  Serial.println("WARNING: Server certificate changed!");
+  Serial.println("New fingerprint: " + fingerprint);
+  Serial.println("Options to accept this certificate:");
+  Serial.println("1. Send 'y' via Serial within 10 seconds");
+  Serial.println("2. Press and hold Button 1 for 3 seconds");
+  Serial.println("3. Wait 60 seconds for automatic rejection");
+  
+  unsigned long startTime = millis();
+  bool buttonPressed = false;
+  unsigned long buttonPressTime = 0;
+  
+  // 60 second timeout for overall verification decision
+  while (millis() - startTime < 60000) {
+    // Check for serial input
+    if (Serial.available() > 0) {
+      char input = Serial.read();
+      if (input == 'y' || input == 'Y') {
+        Serial.println("Certificate accepted via Serial.");
+        return true;
+      }
+    }
+    
+    // Check for button press
+    if (digitalRead(BUTTON1_PIN) == LOW) {
+      if (!buttonPressed) {
+        buttonPressed = true;
+        buttonPressTime = millis();
+        Serial.println("Button pressed, hold for 3 seconds to accept certificate");
+      } else if (millis() - buttonPressTime > 3000) {
+        // Button held for 3+ seconds
+        Serial.println("Certificate accepted via Button press.");
+        // Flash LED to confirm acceptance
+        for (int i = 0; i < 3; i++) {
+          digitalWrite(LED_PIN, HIGH);
+          delay(200);
+          digitalWrite(LED_PIN, LOW);
+          delay(200);
+        }
+        return true;
+      }
+    } else {
+      buttonPressed = false;
+    }
+    
+    // Visual indication - slow blink during verification waiting period
+    if ((millis() - startTime) % 1000 < 500) {
+      digitalWrite(LED_PIN, HIGH);
+    } else {
+      digitalWrite(LED_PIN, LOW);
+    }
+    
+    delay(100); // Small delay to prevent CPU hogging
+  }
+  
+  Serial.println("Certificate verification failed - timeout or rejected");
+  // Flash LED rapidly to indicate rejection
+  for (int i = 0; i < 10; i++) {
+    digitalWrite(LED_PIN, HIGH);
+    delay(100);
+    digitalWrite(LED_PIN, LOW);
+    delay(100);
+  }
+  return false; // Reject the certificate
+}
+
 // State variables
 String currentTags[4] = {"", "", "", ""};
 unsigned long lastActivityTime[4] = {0, 0, 0, 0};
@@ -1137,6 +1222,8 @@ void reportActivity();
 void toggleRelay(int relayNum, bool state);
 void factoryReset();
 void blinkLED(int times, int delayMS);
+bool handleCertificateVerification(const String& url, const String& fingerprint, bool firstConnection);
+bool setupCertificatePinning(NetworkManager &networkManager, ConfigManager &configManager);
 
 void setup() {
   Serial.begin(115200);
@@ -1186,6 +1273,37 @@ void setup() {
     configManager.getNodeName()
   );
   
+  // Verify server certificate fingerprint
+  if (wifiConnected && configManager.getServerURL().startsWith("https")) {
+    bool certVerified = networkManager.verifyCertificate(configManager.getServerURL());
+    if (!certVerified) {
+      Serial.println("WARNING: Server certificate verification failed!");
+      blinkLED(5, 100); // Fast error blink
+    } else {
+      Serial.println("Server certificate verified successfully.");
+    }
+  }
+  
+  // Initialize HTTPS and API Token authentication
+  networkManager.loadTokenFromStorage();
+  if (!networkManager.hasValidToken()) {
+    Serial.println("No valid API token found, requesting new token");
+    String newToken;
+    if (networkManager.requestNewToken(configManager.getServerUrl(), configManager.getNodeName(), NODE_SECRET, newToken)) {
+      Serial.println("Successfully obtained API token");
+    } else {
+      Serial.println("Failed to obtain API token, will retry later");
+    }
+  } else {
+    Serial.println("Loaded existing API token");
+  }
+  
+  // Enable HTTPS for secure communication
+  networkManager.setUseHTTPS(true);
+  // For development, allow insecure connections (no certificate validation)
+  // In production, this should be set to false and proper CA certificates should be used
+  networkManager.setInsecureServerConnection(true);
+  
   // Setup web server
   webUI.begin();
   
@@ -1204,6 +1322,52 @@ void setup() {
   
   // Signal ready
   blinkLED(5, 100);
+
+  // Initialize SPIFFS for token storage
+  if (!SPIFFS.begin(true)) {
+    Serial.println("Failed to mount SPIFFS. Formatting...");
+    if (!SPIFFS.format()) {
+      Serial.println("SPIFFS format failed");
+    } else {
+      if (!SPIFFS.begin(true)) {
+        Serial.println("SPIFFS mount failed after formatting");
+      } else {
+        Serial.println("SPIFFS formatted and mounted successfully");
+      }
+    }
+  }
+  
+  // Initialize network with secure token support
+  networkManager.begin(config.wifiSSID.c_str(), config.wifiPassword.c_str(), config.nodeName.c_str());
+  
+  // Setup HTTPS security if enabled
+  if (config.useHTTPS) {
+    networkManager.setUseHTTPS(true);
+    // Configure CA certificate if available, otherwise allow insecure connections in development
+    if (strlen(config.caCertificate) > 0) {
+      networkManager.setCACert(config.caCertificate);
+    } else if (config.allowInsecureHTTPS) {
+      networkManager.setInsecureServerConnection(true);
+      Serial.println("WARNING: Using insecure HTTPS connections");
+    }
+  }
+  
+  // Load token if available or request a new one
+  if (!networkManager.loadTokenFromStorage()) {
+    Serial.println("No valid token found, requesting new token from server");
+    String newToken;
+    if (networkManager.requestNewToken(config.serverUrl, config.nodeId, config.nodeSecret, newToken)) {
+      Serial.println("Successfully obtained API token");
+      networkManager.saveTokenToStorage();
+    } else {
+      Serial.println("Failed to obtain API token, will retry later");
+    }
+  } else {
+    Serial.println("API token loaded from storage");
+  }
+
+  // Set up certificate pinning for secure connections
+  setupCertificatePinning(networkManager, configManager);
 }
 
 void loop() {
@@ -1268,6 +1432,23 @@ void loop() {
   }
   
   delay(50); // Small delay to prevent CPU overload
+
+  // Check API token health periodically
+  static unsigned long lastTokenCheck = 0;
+  if (millis() - lastTokenCheck > 3600000) { // Check once per hour
+    lastTokenCheck = millis();
+    
+    if (!networkManager.hasValidToken()) {
+      Serial.println("API token expired or will expire soon, refreshing...");
+      String newToken;
+      if (networkManager.requestNewToken(config.serverUrl, config.nodeId, config.nodeSecret, newToken)) {
+        Serial.println("Successfully refreshed API token");
+        networkManager.saveTokenToStorage();
+      } else {
+        Serial.println("Failed to refresh API token, will retry later");
+      }
+    }
+  }
 }
 
 void checkActivity() {
@@ -1413,4 +1594,130 @@ void blinkLED(int times, int delayMS) {
     digitalWrite(LED_PIN, LOW);
     delay(delayMS);
   }
+}
+
+// Certificate verification handler
+bool handleCertificateVerification(const String& url, const String& fingerprint, bool firstConnection) {
+  Serial.println("Certificate verification required");
+  Serial.print("URL: ");
+  Serial.println(url);
+  Serial.print("Fingerprint: ");
+  Serial.println(fingerprint);
+  
+  if (firstConnection) {
+    Serial.println("First connection to this server - storing certificate fingerprint");
+    return true; // Accept on first connection
+  } else {
+    Serial.println("WARNING: Server certificate changed!");
+    
+    // In production, you might want to implement a more secure method:
+    // 1. Display warning on connected display if available
+    // 2. Require physical button press to accept new certificate
+    // 3. Only accept certificates signed by trusted CAs
+    
+    // For now, we'll reject changed certificates automatically
+    // A factory reset would be needed to accept a new certificate
+    return false;
+  }
+}
+
+/**
+ * Sets up certificate pinning for secure connections
+ * 
+ * @param networkManager Reference to the network manager
+ * @param configManager Reference to the config manager
+ * @return True if certificate pinning was successfully set up
+ */
+bool setupCertificatePinning(NetworkManager &networkManager, ConfigManager &configManager) {
+  // Check if we should use HTTPS based on config
+  bool useHttps = configManager.getUseHTTPS();
+  networkManager.setUseHTTPS(useHttps);
+  
+  if (!useHttps) {
+    Serial.println("HTTPS not enabled, skipping certificate setup");
+    return true;
+  }
+
+  // Check if we have a stored certificate fingerprint
+  bool fingerprintLoaded = networkManager.loadCertFingerprintFromStorage();
+  
+  if (fingerprintLoaded) {
+    Serial.println("Certificate fingerprint loaded from storage");
+    return true;
+  }
+
+  // Get server hostname from URL
+  String serverUrl = configManager.getServerUrl();
+  if (serverUrl.length() == 0) {
+    Serial.println("No server URL configured, skipping certificate pinning");
+    return false;
+  }
+
+  // Extract hostname from URL
+  String hostname;
+  if (serverUrl.startsWith("https://")) {
+    hostname = serverUrl.substring(8);
+  } else if (serverUrl.startsWith("http://")) {
+    hostname = serverUrl.substring(7);
+  } else {
+    hostname = serverUrl;
+  }
+  
+  // Remove path and port if present
+  int pathIndex = hostname.indexOf('/');
+  if (pathIndex > 0) {
+    hostname = hostname.substring(0, pathIndex);
+  }
+  
+  int portIndex = hostname.indexOf(':');
+  if (portIndex > 0) {
+    hostname = hostname.substring(0, portIndex);
+  }
+
+  Serial.print("Attempting to fetch certificate for: ");
+  Serial.println(hostname);
+
+  // Connect to server and fetch certificate
+  WiFiClientSecure client;
+  client.setInsecure(); // Initially insecure to get the certificate
+  
+  if (!client.connect(hostname.c_str(), 443)) {
+    Serial.println("Failed to connect to server for certificate verification");
+    
+    // Fallback to insecure if configured
+    bool allowInsecure = configManager.getAllowInsecureConnections();
+    networkManager.setInsecureServerConnection(allowInsecure);
+    
+    return false;
+  }
+
+  // Get certificate fingerprint
+  const mbedtls_x509_crt* cert = client.getPeerCertificate();
+  if (!cert) {
+    Serial.println("Failed to get peer certificate");
+    return false;
+  }
+
+  // Calculate SHA1 fingerprint
+  byte fingerprint[20];
+  mbedtls_sha1(cert->raw.p, cert->raw.len, fingerprint);
+  
+  // Format fingerprint as hex string
+  String calculatedFingerprint = "";
+  for (int i = 0; i < sizeof(fingerprint); i++) {
+    if (i > 0) calculatedFingerprint += ":";
+    char hex[3];
+    sprintf(hex, "%02X", fingerprint[i]);
+    calculatedFingerprint += hex;
+  }
+  
+  Serial.println("Server certificate fingerprint: " + calculatedFingerprint);
+  
+  // Store the fingerprint
+  networkManager.setCertFingerprint(calculatedFingerprint);
+  
+  // Configure client to use the fingerprint for future connections
+  client.stop();
+  
+  return true;
 }

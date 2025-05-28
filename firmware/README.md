@@ -1,138 +1,130 @@
-# ESP32 Multi-Function Node Firmware
+# ShopMonitor Firmware
 
-This firmware is designed for ESP32 DevKit V1 boards to create modular IoT nodes for the ShopMonitoring System, with multiple operating modes and seamless web configuration.
+This directory contains the firmware code for ESP32-based monitoring devices used in the ShopMonitor system. The firmware supports different hardware variants and node types.
 
-## Hardware Requirements
+## Firmware Variants
 
-- ESP32 DevKit V1 board (ESP-WROOM-32)
-- RFID-RC522 module(s) - Up to 4 for Machine Monitor mode
-- Relay modules (up to 4) for Machine control
-- Activity sensors (up to 4) for monitoring machine usage
-- Status LED (connected to GPIO5)
-- Buzzer for audio feedback (connected to GPIO15)
-- Push buttons for manual control
+### 1. Standard ESP32 (esp32/)
+The standard ESP32 firmware supports the following node types:
+- **Machine Monitor**: Controls machine access with RFID and monitors activity
+- **Office RFID Reader**: Registers new RFID cards into the system
+- **Accessory IO Controller**: Manages external devices (fans, lights, etc.)
 
-## Features
+### 2. ESP32-CYD with Audio (esp32-cyd/)
+The ESP32-CYD firmware includes all standard functionality plus:
+- **Audio feedback** for user interactions
+- **Bluetooth audio** connectivity for announcements and music
+- **TFT display** with touch interface
+- **Network audio** streaming support
 
-- **Multiple Operating Modes:**
-  - **Machine Monitor**: Controls up to 4 machines with RFID access and activity tracking
-  - **Office RFID Reader**: Single RFID reader for registration or authentication
-  - **Accessory IO Controller**: Controls relays and monitors inputs for accessories
-- **Web Configuration Interface**: Easy setup through browser-based config portal
-- **Automatic Device Discovery**: mDNS-based discovery for easy integration
-- **WiFi Management**: Fallback AP mode with network scanning capability
-- **OTA Updates**: Firmware updates over-the-air
-- **Offline Mode**: Continued operation when server connection is unavailable
-- **Activity Counting**: Tracks machine activity and reports periodically
+## Building the Firmware
 
-## Project Structure
+### Prerequisites
+- PlatformIO (CLI or VSCode extension)
+- Python 3.x
+- Git
 
-```
-firmware/
-├── include/             # Global header files
-│   └── constants.h      # System-wide constants and pin definitions
-├── lib/                 # Component libraries
-│   ├── ConfigManager/   # Configuration persistence
-│   ├── NetworkManager/  # WiFi and server communication
-│   ├── RFIDHandler/     # RFID reader management
-│   └── WebUI/           # Web interface components
-├── src/                 # Main application code
-│   ├── main.cpp         # Primary application logic
-│   ├── dashboard.h      # Web interface HTML (embedded)
-│   └── wiring_diagram.h # Hardware connection diagram (embedded)
-├── platformio.ini       # PlatformIO configuration
-└── README.md            # This file
-```
-
-## Setup Instructions
-
-### PlatformIO Setup
-
-1. Install [Visual Studio Code](https://code.visualstudio.com/)
-2. Install [PlatformIO Extension](https://platformio.org/install/ide?install=vscode)
-3. Clone or download this repository
-4. Open the firmware folder in VS Code
-5. PlatformIO will automatically detect the project and install dependencies
-
-### Building and Uploading
-
+### Building Standard ESP32 Firmware
 ```bash
-# Build the project
+cd firmware/esp32
 platformio run
+```
+The compiled binary will be available at `firmware/esp32/.pio/build/esp32dev/firmware.bin`
 
-# Upload to ESP32
+### Building ESP32-CYD Firmware
+```bash
+cd firmware/esp32-cyd
+platformio run
+```
+The compiled binary will be available at `firmware/esp32-cyd/.pio/build/esp32-cyd/firmware.bin`
+
+### Building Both Variants at Once
+```bash
+cd firmware
+chmod +x package.sh  # Make the script executable (only needed once)
+./package.sh
+```
+This will create two zip files:
+- `esp32_shop_firmware.zip` - Standard ESP32 firmware
+- `esp32_cyd_audio_firmware.zip` - ESP32-CYD firmware with audio support
+
+## Flashing the Firmware
+
+### Using PlatformIO
+```bash
+cd firmware/esp32  # or esp32-cyd
 platformio run --target upload
-
-# Monitor serial output
-platformio device monitor
 ```
 
-### First Time Setup
+### Using esptool.py (Alternative Method)
+```bash
+esptool.py --chip esp32 --port [PORT] --baud 921600 write_flash -z 0x10000 firmware.bin
+```
+Replace `[PORT]` with your device's serial port (e.g., COM3, /dev/ttyUSB0).
 
-When first powered on, the ESP32 will create a WiFi access point named "ShopNode_XXXXXX".
+## Hardware Configuration
 
-1. Connect to this WiFi network (password: Shop123)
-2. Open a web browser and navigate to http://192.168.4.1
-3. Configure the node name, type, WiFi credentials and server URL
-4. The device will restart and connect to your WiFi network
+### ESP32 Standard Pinout
+- **RFID Readers**: Up to 4 RFID-RC522 modules via SPI
+- **Relay Control**: 4 relay outputs for machine control
+- **Activity Sensors**: 4 input pins for activity monitoring
+- **E-Stop**: Emergency stop input and relay output
+- **Indicators**: Built-in LED and optional WS2812B LEDs
 
-## Pin Configuration
+See `include/constants.h` for the complete pin mapping.
 
-### SPI Pins (Fixed on ESP32)
-- MOSI: GPIO23
-- MISO: GPIO19
-- SCK: GPIO18
+### ESP32-CYD Pinout
+- **Display**: 320x240 TFT display with touch
+- **RFID Reader**: Single RFID-RC522 module
+- **Audio**: I2S DAC output for audio
+- **Relay**: Single relay output
+- **Activity Sensor**: Single activity input
+- **E-Stop**: Emergency stop input and relay output
 
-### RFID Reader Pins
-- RFID 1 SS: GPIO21
-- RFID 2 SS: GPIO17
-- RFID 3 SS: GPIO16
-- RFID 4 SS: GPIO4
-- Shared RST: GPIO22
+## Node Types and Features
 
-### Output Pins
-- Relay 1: GPIO13
-- Relay 2: GPIO12
-- Relay 3: GPIO14
-- Relay 4: GPIO27
-- Status LED: GPIO5
-- Buzzer: GPIO15
+### Machine Monitor
+- RFID-based machine access control
+- Activity monitoring and reporting
+- Automatic logout after inactivity
+- E-stop monitoring
+- Offline access with saved RFID cards
 
-### Input Pins
-- Activity Sensor 1: GPIO36
-- Activity Sensor 2: GPIO39
-- Activity Sensor 3: GPIO34
-- Activity Sensor 4: GPIO35
-- Button 1: GPIO33
-- Button 2: GPIO32
+### Office RFID Reader
+- RFID card registration
+- User authentication
+- Server synchronization of user data
+
+### Accessory IO Controller
+- Control of accessory devices (fans, lights, etc.)
+- Sensor input monitoring
+- Scheduled operations
+- Network control via REST API
+
+## Configuration
+
+On first boot, the device creates an access point for configuration:
+- SSID: `ShopMonitor-Setup`
+- Password: `shopsetup`
+
+Connect to this network and navigate to `http://192.168.4.1` to configure:
+- WiFi settings
+- Node name and type
+- Server connection details
+- Machine IDs (for Machine Monitor type)
 
 ## API Endpoints
 
-The firmware exposes the following REST API endpoints:
+### Local Device API
+- `/api/status` - Get device status
+- `/api/config` - Get/set device configuration
+- `/api/reboot` - Reboot device
+- `/api/reset` - Factory reset
+- `/api/relay` - Control relays
+- `/api/wifi/scan` - Scan for WiFi networks
 
-- **GET /**: Web configuration dashboard
-- **GET /wiring**: Wiring diagram and pin connections
-- **GET /api/status**: Returns the current status of the node
-- **GET /api/config**: Returns the current configuration
-- **POST /api/config**: Updates the configuration
-- **GET /api/scan_wifi**: Scans for available WiFi networks
-- **GET /api/reboot**: Reboots the device
-- **GET /api/reset**: Factory resets the device
-- **GET /api/relay**: Controls relay outputs (Accessory IO mode)
-
-## Reset and Recovery
-
-- To perform a factory reset, press and hold both buttons (GPIO33 and GPIO32) for 5 seconds
-- If WiFi connection fails, the device will automatically enter AP mode for reconfiguration
-
-## License
-
-This firmware is licensed under the MIT License.
-
-## Acknowledgments
-
-- ESP32 Arduino Core
-- MFRC522 library by GitHub user miguelbalboa
-- AsyncTCP and ESPAsyncWebServer by me-no-dev
-- ArduinoJSON by Benoit Blanchon
-- NTPClient by Fabrice Weinberg
+### Server Communication API
+- `/api/check_user` - Check user access
+- `/api/update_count` - Report activity count
+- `/api/logout` - Log out user
+- `/api/offline_cards` - Sync offline cards

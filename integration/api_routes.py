@@ -6,10 +6,11 @@ These routes provide endpoints for manual synchronization, status checking, and 
 from flask import Blueprint, jsonify, current_app, request
 from flask_login import login_required, current_user
 from .shop_integration import integration, manual_sync, get_last_sync_time
-from datetime import datetime
+from datetime import datetime, timedelta
 from models import db, Node, Machine, MachineLog, RFIDUser, Alert, User, MachineAuthorization
 from security import require_api_token, sanitize_input
 from error_handling import handle_api_errors, AppError, logger, exponential_backoff
+import hmac
 
 integration_bp = Blueprint('integration', __name__, url_prefix='/integration')
 
@@ -463,3 +464,61 @@ def _logout_previous_user(machine):
     # Reset machine user
     machine.current_user_id = None
     machine.status = 'idle'
+
+# Add the token endpoint for node authentication
+@integration_bp.route('/api/auth/token', methods=['POST'])
+def get_api_token():
+    """Generate an authentication token for node devices
+    
+    The ESP32 nodes will call this endpoint with their node_id and secret
+    to receive a JWT token for use with subsequent API requests.
+    """
+    if not request.is_json:
+        return jsonify({"error": "Missing JSON in request"}), 400
+    
+    data = request.json
+    node_id = data.get('node_id')
+    secret = data.get('secret')
+    device_info = data.get('device_info', '')
+    
+    if not node_id or not secret:
+        return jsonify({"error": "Missing node_id or secret"}), 400
+    
+    # Verify node identity and secret
+    node = Node.query.filter_by(node_id=node_id).first()
+    if not node:
+        current_app.logger.warning(f"Token request from unknown node: {node_id}")
+        return jsonify({"error": "Invalid node ID"}), 403
+    
+    # Verify the node secret using a constant-time comparison to prevent timing attacks
+    if not hmac.compare_digest(node.secret_hash, security.hash_secret(secret, node.salt)):
+        current_app.logger.warning(f"Invalid secret for node: {node_id}")
+        return jsonify({"error": "Invalid credentials"}), 403
+    
+    # Generate JWT token with 30-day expiration by default
+    expires_in = 30 * 24 * 60 * 60  # 30 days in seconds
+    token_payload = {
+        'sub': node_id,
+        'type': 'node',
+        'iat': datetime.utcnow(),
+        'exp': datetime.utcnow() + timedelta(seconds=expires_in),
+        'device_info': device_info
+    }
+    
+    # Sign the token with the app's secret key
+    token = security.create_access_token(token_payload)
+    
+    # Log the successful token issuance
+    current_app.logger.info(f"API token issued to node: {node_id}, expires in {expires_in} seconds")
+    
+    # Record this authentication in node history
+    node.last_token_issued = datetime.utcnow()
+    if device_info:
+        node.device_info = device_info
+    db.session.commit()
+    
+    return jsonify({
+        "access_token": token,
+        "token_type": "Bearer",
+        "expires_in": expires_in
+    }), 201

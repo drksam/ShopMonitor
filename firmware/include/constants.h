@@ -1,95 +1,124 @@
-#ifndef CONSTANTS_H
-#define CONSTANTS_H
+#pragma once
 
-// Version information
-#define FIRMWARE_VERSION "1.0.1"
-#define SHOP_SUITE_VERSION "1.0.1"
-#define SHOP_MONITOR_VERSION "1.0.1"
+#define VERSION "1.3.0"  // Firmware version
 
 // Node types
 #define NODE_TYPE_MACHINE_MONITOR 0
-#define NODE_TYPE_OFFICE_READER 1
-#define NODE_TYPE_ACCESSORY_IO 2
+#define NODE_TYPE_OFFICE_READER   1
+#define NODE_TYPE_ACCESSORY_IO    2
 
-// Default configuration values
-#define DEFAULT_NODE_NAME "ShopNode"
-#define DEFAULT_SERVER_URL "http://192.168.1.100:5000"
+// Node states
+#define STATE_SETUP               0
+#define STATE_CONNECTING_WIFI     1
+#define STATE_CONNECTING_SERVER   2
+#define STATE_READY               3
+#define STATE_ERROR               4
+#define STATE_CONFIG_MODE         5
 
-// Pin definitions for SPI RFID readers
-// RFID Reader 1 (SPI)
-#define RFID1_SS_PIN 5
-#define RFID1_RST_PIN 22
-#define SS_PIN1 RFID1_SS_PIN  // Backward compatibility
-#define RST_PIN RFID1_RST_PIN  // Common RST pin definition for backward compatibility
+// Standard ESP32 pin definitions
+#ifdef ESP32_STANDARD
+  // SPI bus pins
+  #define PIN_SPI_MOSI           23  // SPI MOSI pin
+  #define PIN_SPI_MISO           19  // SPI MISO pin
+  #define PIN_SPI_SCK            18  // SPI SCK pin
 
-// RFID Reader 2 (SPI)
-#define RFID2_SS_PIN 4
-#define RFID2_RST_PIN 23
-#define SS_PIN2 RFID2_SS_PIN  // Backward compatibility
+  // RFID readers (up to 4 zones)
+  #define MAX_RFID_READERS        4   // Maximum number of RFID readers
+  #define PIN_RFID_RST           22   // Shared RST pin for all RFID readers
+  #define PIN_RFID_SS_0          21   // SS pin for reader 0
+  #define PIN_RFID_SS_1          17   // SS pin for reader 1
+  #define PIN_RFID_SS_2          16   // SS pin for reader 2
+  #define PIN_RFID_SS_3           4   // SS pin for reader 3
 
-// RFID Reader 3 (SPI)
-#define RFID3_SS_PIN 2
-#define RFID3_RST_PIN 21
-#define SS_PIN3 RFID3_SS_PIN  // Backward compatibility
+  // LED indicators
+  #define PIN_LED_DATA            5   // WS2812B data pin
+  #define NUM_LEDS                4   // Number of LEDs (one per zone)
 
-// RFID Reader 4 (SPI)
-#define RFID4_SS_PIN 15
-#define RFID4_RST_PIN 19
-#define SS_PIN4 RFID4_SS_PIN  // Backward compatibility
+  // Relay control pins
+  #define RELAY1_PIN             13   // Relay 1 control pin
+  #define RELAY2_PIN             12   // Relay 2 control pin
+  #define RELAY3_PIN             14   // Relay 3 control pin
+  #define RELAY4_PIN             27   // Relay 4 control pin
 
-// Common SPI pins (shared by all readers)
-#define SPI_SCK_PIN 18
-#define SPI_MISO_PIN 26
-#define SPI_MOSI_PIN 25
+  // Activity monitoring pins
+  #define ACTIVITY1_PIN          36   // Activity sensor 1 pin
+  #define ACTIVITY2_PIN          39   // Activity sensor 2 pin
+  #define ACTIVITY3_PIN          34   // Activity sensor 3 pin
+  #define ACTIVITY4_PIN          35   // Activity sensor 4 pin
 
-// Relay control pins
-#define RELAY1_PIN 32
-#define RELAY2_PIN 33
-#define RELAY3_PIN 27
-#define RELAY4_PIN 14
+  // Auxiliary components
+  #define BUZZER_PIN             15   // Buzzer pin
+  #define LED_PIN                 2   // Built-in LED pin
+  #define BUTTON1_PIN            33   // Mode button 1 pin
+  #define BUTTON2_PIN            32   // Mode button 2 pin
+  #define BOOT_BUTTON_PIN         0   // Boot button (built-in)
 
-// Activity sensor pins
-#define ACTIVITY1_PIN 35
-#define ACTIVITY2_PIN 34
-#define ACTIVITY3_PIN 39
-#define ACTIVITY4_PIN 36
+  // ESTOP 
+  #define ESTOP_PIN              25   // Emergency stop input pin
+  #define ESTOP_RELAY_PIN        26   // Emergency stop relay output pin
+#endif
 
-// LED indicators
-#define STATUS_LED_PIN 13
-#define RGB_LED_PIN 12
-#define LED_PIN STATUS_LED_PIN  // Alias for backward compatibility
+// ESP32-CYD (with TFT display and audio) pin definitions
+#ifdef ESP32_CYD
+  // SPI bus for RFID readers
+  #define PIN_SPI_MOSI           23  // SPI MOSI pin
+  #define PIN_SPI_MISO           19  // SPI MISO pin
+  #define PIN_SPI_SCK            18  // SPI SCK pin
+  
+  // SPI bus for TFT display (separate from RFID readers)
+  #define PIN_TFT_MOSI           13  // TFT MOSI pin (possibly shared if using Hardware SPI)
+  #define PIN_TFT_MISO           12  // TFT MISO pin (possibly shared if using Hardware SPI)
+  #define PIN_TFT_SCK            14  // TFT SCK pin (possibly shared if using Hardware SPI)
+  #define PIN_TFT_CS             15  // TFT Chip Select pin
+  #define PIN_TFT_DC              2  // TFT Data/Command pin
+  #define PIN_TFT_RST             4  // TFT Reset pin
+  #define PIN_TFT_BACKLIGHT      21  // TFT Backlight control pin
 
-// Buzzer
-#define BUZZER_PIN 16
+  // RFID readers (only 1 for CYD since space is limited)
+  #define MAX_RFID_READERS        1  // Maximum number of RFID readers
+  #define PIN_RFID_RST           22  // RFID reader reset pin
+  #define PIN_RFID_SS            5   // RFID reader SS pin
 
-// Buttons
-#define RESET_BUTTON_PIN 17
-#define BUTTON1_PIN 16  // Using buzzer pin as dual-purpose button
-#define BUTTON2_PIN 17  // Using reset button as dual-purpose button
+  // Touch screen pins
+  #define PIN_TOUCH_CS           27  // Touch controller chip select
+  #define PIN_TOUCH_IRQ          26  // Touch controller interrupt pin
 
-// Network settings
-#define DEFAULT_AP_PASSWORD "ShopMonitor"
-#define AP_PASSWORD DEFAULT_AP_PASSWORD  // Alias for backward compatibility
-#define WIFI_CONNECTION_TIMEOUT 20000
-#define WIFI_TIMEOUT_SECONDS 20
-#define MDNS_SERVICE "_shop-monitor"
-#define MDNS_SERVICE_TYPE "_shop-monitor"
-#define MAX_WIFI_SCAN_RESULTS 20
+  // Audio pins
+  #define I2S_BCLK_PIN           25  // I2S bit clock pin
+  #define I2S_LRCLK_PIN          26  // I2S word select pin
+  #define I2S_DATA_PIN           22  // I2S data pin
+  #define AUDIO_ENABLE_PIN       17  // Audio amplifier enable pin
 
-// Server connection settings
-#define SERVER_CHECK_INTERVAL 300000  // 5 minutes
-#define ACTIVITY_REPORT_INTERVAL 600000  // 10 minutes
-#define REPORT_INTERVAL ACTIVITY_REPORT_INTERVAL  // Alias for backward compatibility
+  // ESTOP
+  #define ESTOP_PIN              33  // Emergency stop input pin
+  #define ESTOP_RELAY_PIN        32  // Emergency stop relay output pin
 
-// Web UI settings
-#define WEB_SERVER_PORT 80
+  // LEDs
+  #define LED_PIN                 2  // Built-in LED pin
+  
+  // Onboard RGB LED pins
+  #define LED_PIN_R               4  // RGB LED Red pin
+  #define LED_PIN_G              16  // RGB LED Green pin
+  #define LED_PIN_B              17  // RGB LED Blue pin - overlaps with AUDIO_ENABLE_PIN
+  
+  // Light Dependent Resistor (LDR)
+  #define LDR_PIN                34  // Light sensor pin (ADC6)
+  
+  // I2C Port Expander (PCF8575)
+  #define I2C_SDA_PIN            21  // I2C SDA pin
+  #define I2C_SCL_PIN            22  // I2C SCL pin - overlaps with PIN_RFID_RST
+  #define PCF8575_ADDR          0x20  // I2C address of PCF8575 (adjust as needed)
+  
+  // Relay and Activity Sensor - Using PCF8575 port expander
+  #define PIN_RELAY              0   // PCF8575 P0 for relay control
+  #define PIN_ACTIVITY_SENSOR    1   // PCF8575 P1 for activity sensor
+  
+  // Button
+  #define BOOT_BUTTON_PIN         0  // Boot button (built-in)
+#endif
 
-// EEPROM/Preferences settings
-#define CONFIG_NAMESPACE "shopmonitor"
-#define PREFERENCES_NAMESPACE CONFIG_NAMESPACE  // Alias for backward compatibility
-
-// Maximum buffer sizes
-#define MAX_JSON_SIZE 2048
-#define MAX_UID_SIZE 32
-
-#endif // CONSTANTS_H
+// Common constants
+#define REPORT_INTERVAL        60000  // Activity reporting interval (ms)
+#define ACTIVITY_TIMEOUT     3600000  // Activity timeout period (ms)
+#define WARNING_TIMEOUT       300000  // Warning timeout period before logout (ms)
+#define RELAY_OFF_DELAY        10000  // Delay before turning relay off (ms)

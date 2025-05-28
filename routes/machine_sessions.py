@@ -54,13 +54,17 @@ def login_to_machine(machine_id):
             flash(f'User {user.name} is already logged in to this machine.', 'info')
             return redirect(url_for('machine_sessions.view_machine_sessions', machine_id=machine.id))
         
+        # Get current number of active users
+        current_user_count = machine.current_users.count()
+        
+        # Check if user can log in with existing users (multi-user support)
+        if current_user_count > 0 and not user.can_login_with_others(machine.id, current_user_count):
+            flash(f'Machine {machine.name} is already in use and cannot support additional users at this time.', 'danger')
+            return redirect(url_for('machine_sessions.view_machine_sessions', machine_id=machine.id))
+        
         # If user wants to be lead operator, check if they can be
         if form.is_lead.data:
-            if not user.can_be_lead:
-                flash(f'User {user.name} is not eligible to be a lead operator.', 'danger')
-                return redirect(url_for('machine_sessions.login_to_machine', machine_id=machine.id))
-            
-            if not auth.can_be_lead:
+            if not user.can_be_lead_on_machine(machine.id):
                 flash(f'User {user.name} is not authorized to be a lead operator on this machine.', 'danger')
                 return redirect(url_for('machine_sessions.login_to_machine', machine_id=machine.id))
             
@@ -71,6 +75,30 @@ def login_to_machine(machine_id):
                 is_lead=True,
                 login_time=datetime.now()
             )
+            
+            # If there's a current lead operator, demote them
+            if machine.lead_operator_id and machine.lead_operator_id != user.id:
+                # Find their session and update it
+                current_lead_session = MachineSession.query.filter_by(
+                    machine_id=machine.id,
+                    user_id=machine.lead_operator_id,
+                    logout_time=None,
+                    is_lead=True
+                ).first()
+                
+                if current_lead_session:
+                    current_lead_session.is_lead = False
+                
+                # Close their lead history
+                lead_history = LeadOperatorHistory.query.filter_by(
+                    machine_id=machine.id,
+                    user_id=machine.lead_operator_id,
+                    removed_time=None
+                ).order_by(LeadOperatorHistory.assigned_time.desc()).first()
+                
+                if lead_history:
+                    lead_history.removed_time = datetime.now()
+                    lead_history.removal_reason = 'reassigned'
             
             # Update machine's lead operator
             machine.lead_operator_id = user.id
@@ -400,7 +428,11 @@ def api_rfid_login(machine_id):
     user = RFIDUser.query.filter_by(rfid_tag=rfid_tag).first()
     
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify({
+            'status': 'error',
+            'error': 'User not found',
+            'message': 'RFID card not recognized'
+        }), 404
     
     # Check if user is authorized to use this machine
     auth = MachineAuthorization.query.filter_by(
@@ -409,7 +441,11 @@ def api_rfid_login(machine_id):
     ).first()
     
     if not auth:
-        return jsonify({'error': 'User not authorized for this machine'}), 403
+        return jsonify({
+            'status': 'error',
+            'error': 'User not authorized',
+            'message': f'{user.name} is not authorized to use this machine'
+        }), 403
     
     # Check if user is already logged in
     existing_session = MachineSession.query.filter_by(
@@ -472,12 +508,16 @@ def api_rfid_login(machine_id):
         log = MachineLog(
             machine_id=machine.id,
             user_id=user.id,
-            log_time=datetime.now(),
-            event='logout',
+            login_time=datetime.now(),
+            logout_time=datetime.now(),
+            total_time=0,
+            status='completed',
             was_lead=existing_session.is_lead
         )
         db.session.add(log)
         db.session.commit()
+        
+        can_start = machine.lead_operator_id is not None
         
         return jsonify({
             'status': 'success',
@@ -485,15 +525,32 @@ def api_rfid_login(machine_id):
             'user': {
                 'id': user.id,
                 'name': user.name
-            }
+            },
+            'machine_status': {
+                'has_lead': machine.lead_operator_id is not None,
+                'can_start': can_start,
+                'lead_operator': machine.lead_operator.name if machine.lead_operator_id else None
+            },
+            'warning': None if can_start else 'Machine cannot start without a lead operator'
         })
     else:
         # User is not logged in, so log them in
+        # Get current number of active users
+        current_user_count = machine.current_users.count()
+        
+        # Check if user can log in with existing users
+        if current_user_count > 0 and not user.can_login_with_others(machine.id, current_user_count):
+            return jsonify({
+                'status': 'error',
+                'error': 'Multi-user limit exceeded',
+                'message': f'Maximum number of concurrent users ({auth.max_concurrent_users}) reached for this machine'
+            }), 403
+        
         # Determine if they should be a lead operator
         should_be_lead = False
         
         # If they can be a lead and there's no current lead, make them the lead
-        if user.can_be_lead and auth.can_be_lead and not machine.lead_operator_id:
+        if user.can_be_lead_on_machine(machine.id) and not machine.lead_operator_id:
             should_be_lead = True
         
         # Create a new session
@@ -525,12 +582,15 @@ def api_rfid_login(machine_id):
         log = MachineLog(
             machine_id=machine.id,
             user_id=user.id,
-            log_time=datetime.now(),
-            event='login',
+            login_time=datetime.now(),
+            status='active',
             was_lead=should_be_lead
         )
         db.session.add(log)
         db.session.commit()
+        
+        # Check if machine can start (requires lead operator)
+        can_start = machine.lead_operator_id is not None
         
         return jsonify({
             'status': 'success',
@@ -539,7 +599,14 @@ def api_rfid_login(machine_id):
                 'id': user.id,
                 'name': user.name
             },
-            'is_lead': should_be_lead
+            'is_lead': should_be_lead,
+            'machine_status': {
+                'has_lead': machine.lead_operator_id is not None,
+                'can_start': can_start,
+                'lead_operator': machine.lead_operator.name if machine.lead_operator_id else None,
+                'active_users': current_user_count + 1
+            },
+            'warning': None if can_start else 'Machine cannot start without a lead operator'
         })
 
 @machine_sessions_bp.route('/api/machines/<int:machine_id>/report_quality', methods=['POST'])

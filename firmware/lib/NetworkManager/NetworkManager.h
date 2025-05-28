@@ -5,6 +5,7 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h> // Added for HTTPS support
 #include <ArduinoJson.h>
 #include <SPIFFS.h>
 #include "include/constants.h"
@@ -27,6 +28,10 @@
 #define NET_STORAGE_ERROR 13
 #define NET_CONNECTION_RESET 14
 #define NET_HARDWARE_ERROR 15
+#define NET_CERT_VERIFY_ERROR 16  // Certificate verification failed
+
+// File paths for storage
+#define CERT_FINGERPRINT_FILE "/cert_fingerprint.dat"
 
 // Max retry attempts for network operations
 #define MAX_WIFI_RETRIES 5
@@ -67,12 +72,30 @@ public:
   void reconnect();
   void processOfflineQueue();
   
-  // HTTP helpers with improved error handling
+  // HTTP/HTTPS helpers with improved error handling
   bool sendGET(const String &url, String &response, bool retryOnFail = true);
   bool sendPOST(const String &url, const String &jsonPayload, String &response, bool retryOnFail = true);
+  bool httpRequest(const String &url, const String &method, const String &payload, String &response, bool retryOnFail = true);
+  
+  // HTTPS specific methods
+  void setUseHTTPS(bool useHTTPS);
+  void setCACert(const char* cert);
+  void setInsecureServerConnection(bool allowInsecure);
+  bool setServerCertificate(const String &certType);
+  bool loadCertificateFromSPIFFS(const String &filename);
+  bool saveCertificateToSPIFFS(const String &filename, const String &certContent);
+  bool setupSecureClient(WiFiClientSecure &secureClient);
+  
+  // Certificate pinning methods
+  void setCertFingerprint(const String &fingerprint);
+  bool verifyCertificateFingerprint(const String &host);
+  bool loadCertFingerprintFromStorage();
+  bool saveCertFingerprintToStorage();
+  bool fetchAndStoreCertFingerprint(const String &url);
   
   // Queue operations for offline mode
-  void queueRequest(const String &url, const String &method, const String &payload, bool critical = false);
+  void queueRequest(const String &url, const String &method, const String &payload);
+  void queueRequest(const String &url, const String &method, const String &payload, bool critical);
   void saveOfflineQueue();
   void loadOfflineQueue();
   
@@ -90,6 +113,16 @@ public:
   // Status reporting
   String getStatusJson();
   String getErrorLogJson();                   // Returns recent errors as JSON
+  
+  // API Authentication methods
+  void setAPIToken(const String &token);
+  String getAPIToken();
+  bool requestNewToken(const String &serverUrl, const String &nodeId, const String &nodeSecret, String &newToken);
+  bool hasValidToken();
+  void saveTokenToStorage();
+  void loadTokenFromStorage();
+  bool refreshTokenIfNeeded(const String &serverUrl);
+  void setNodeCredentials(const String &id, const String &secret);
   
 private:
   bool wifiConnected;
@@ -109,6 +142,19 @@ private:
   uint32_t lastNetworkActivity;
   bool maintenanceMode;
   
+  // HTTPS configuration
+  bool useHTTPS;
+  bool allowInsecureConnection;
+  String caCertificate;
+  String certFingerprint; // Certificate fingerprint for pinning
+  bool useCertFingerprint; // Flag to enable/disable certificate pinning
+  
+  // API Authentication related fields
+  String apiToken;
+  uint32_t tokenExpiry;
+  String nodeId;
+  String nodeSecret;
+  
   // Internal helper methods
   void logError(uint8_t code, const String &message, uint8_t severity = 2);
   bool exponentialBackoffRetry(std::function<bool()> operation, uint8_t maxRetries, uint16_t initialDelayMs);
@@ -118,6 +164,8 @@ private:
   void prioritizeQueue();     // Re-orders queue to prioritize critical requests
   bool isNetworkHealthy();    // Internal network health check
   String getWiFiStatusString(); // Get textual representation of WiFi status
+  bool isHTTPSUrl(const String &url); // Check if URL uses HTTPS protocol
+  int countCriticalQueueItems(); // Count number of critical items in queue
 };
 
 #endif // NETWORK_MANAGER_H

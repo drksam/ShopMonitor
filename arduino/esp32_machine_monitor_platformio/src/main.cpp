@@ -41,6 +41,9 @@ String deviceName = "ESP32-RFID";     // Device name (will be loaded from config
 String locationName = "Main Shop";    // Location name (will be loaded from config)
 String macAddress = "";               // Will be populated during setup
 
+// Firmware version
+#define VERSION "1.2.0"               // Current firmware version
+
 // RFID Module pin configuration for SPI
 #define RST_PIN     22           // Reset pin
 #define SS_PIN      21           // Slave Select pin (SDA)
@@ -48,6 +51,18 @@ String macAddress = "";               // Will be populated during setup
 // LED Configuration
 #define NUM_LEDS    1            // Number of WS2812B LEDs per zone
 CRGB leds[4][NUM_LEDS];          // LED arrays for 4 zones
+
+// Pin definitions for ESP32
+#define LED_PIN     5            // WS2812B LED data pin
+#define RELAY_PIN_1 13           // Relay control pin for zone 1
+#define RELAY_PIN_2 12           // Relay control pin for zone 2
+#define RELAY_PIN_3 14           // Relay control pin for zone 3
+#define RELAY_PIN_4 27           // Relay control pin for zone 4
+#define ACTIVITY_PIN_1 36        // Activity monitoring pin for zone 1
+#define ACTIVITY_PIN_2 39        // Activity monitoring pin for zone 2
+#define ACTIVITY_PIN_3 34        // Activity monitoring pin for zone 3
+#define ACTIVITY_PIN_4 35        // Activity monitoring pin for zone 4
+#define BUZZER_PIN 15            // Optional buzzer for audio feedback
 
 // RFID readers - up to 4 zones
 MFRC522 rfidReaders[4] = {
@@ -683,7 +698,8 @@ void checkUserAccess(String rfid, int zone) {
   if (WiFi.status() == WL_CONNECTED) {
     // Create HTTP client
     WiFiClient client;
-    String url = "/check_user?rfid=" + rfid + "&machine_id=" + machineIDs[zone];
+    // Updated API endpoint to match new PC-side application
+    String url = "/api/check_user?rfid=" + rfid + "&machine_id=" + machineIDs[zone];
     
     if (client.connect(serverIP.c_str(), serverPort)) {
       // Send a GET request to the server
@@ -790,7 +806,8 @@ void logOutUser(int zone) {
     // Report final activity count
     if (WiFi.status() == WL_CONNECTED) {
       WiFiClient client;
-      String url = "/update_count?rfid=" + activeRFIDs[zone] + 
+      // Updated API endpoint to match new PC-side application
+      String url = "/api/update_count?rfid=" + activeRFIDs[zone] + 
                   "&machine_id=" + machineIDs[zone] + 
                   "&count=" + String(activityCount[zone]);
       
@@ -818,7 +835,8 @@ void logOutUser(int zone) {
     // Send logout request to server
     if (WiFi.status() == WL_CONNECTED) {
       WiFiClient client;
-      String url = "/logout_user?rfid=" + activeRFIDs[zone] + "&machine_id=" + machineIDs[zone];
+      // Updated API endpoint to match new PC-side application
+      String url = "/api/logout?rfid=" + activeRFIDs[zone] + "&machine_id=" + machineIDs[zone];
       
       if (client.connect(serverIP.c_str(), serverPort)) {
         client.print("GET " + url + " HTTP/1.1\r\n");
@@ -893,7 +911,8 @@ void reportActivityCounts() {
       // Report activity to server
       if (WiFi.status() == WL_CONNECTED) {
         WiFiClient client;
-        String url = "/update_count?rfid=" + activeRFIDs[zone] + 
+        // Updated API endpoint to match new PC-side application
+        String url = "/api/update_count?rfid=" + activeRFIDs[zone] + 
                     "&machine_id=" + machineIDs[zone] + 
                     "&count=" + String(activityCount[zone]);
         
@@ -930,6 +949,7 @@ void syncOfflineCards() {
   }
   
   WiFiClient client;
+  // Updated API endpoint to match new PC-side application
   String url = "/api/offline_cards";
   
   if (client.connect(serverIP.c_str(), serverPort)) {

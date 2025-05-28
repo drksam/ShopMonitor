@@ -79,6 +79,58 @@ body {
     background-color: #6c757d; /* Bootstrap secondary gray */
 }
 
+.status-no-lead {
+    background-color: #dc3545; /* Bootstrap danger red */
+}
+
+/* Lead operator styles */
+.lead-operator-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: rgba(255, 193, 7, 0.9);
+    color: #000;
+    padding: 3px 8px;
+    border-radius: 0 0 0 8px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 1;
+}
+
+.lead-operator-icon {
+    color: #ffc107; /* Bootstrap warning yellow */
+    margin-right: 3px;
+    text-shadow: 0 0 2px rgba(0,0,0,0.2);
+}
+
+.lead-info {
+    border-left: 3px solid #ffc107;
+    padding-left: 8px;
+    font-weight: 500;
+}
+
+.no-lead-warning {
+    border: 1px solid #dc3545;
+    border-radius: 4px;
+    padding: 4px 8px;
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.sessions-count-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: rgba(13, 110, 253, 0.9);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 0 0 8px 0;
+    font-size: 0.7rem;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 1;
+}
+
 /* Form styling */
 .form-control, .form-select {
     border-radius: 0.25rem;
